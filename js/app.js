@@ -205,7 +205,7 @@ function renderRulesConfigPage() {
             <table class="dsc-table">
               <thead>
                 <tr>
-                  <th>序号</th><th>考核类别</th><th>考核指标名称</th><th>适用业态</th><th>考核周期</th><th>分值</th><th>扣分判定规则简述</th><th>取数平台/通道</th><th>操作</th>
+                  <th>序号</th><th>考核类别</th><th>考核指标名称</th><th>适用业态</th><th>证明资料</th><th>考核周期</th><th>分值</th><th>扣分判定规则简述</th><th>取数平台</th><th>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -215,6 +215,7 @@ function renderRulesConfigPage() {
                     <td><span class="dsc-tag ${r.category==='目标引领'?'dsc-tag--info':r.category==='合规管理'?'dsc-tag--danger':r.category==='重点工作'?'dsc-tag--success':r.category==='数据治理'||r.category==='验收合规性'?'dsc-tag--warning':'dsc-tag--default'}">${r.category}</span></td>
                     <td><strong>${r.name}</strong></td>
                     <td>${r.applicable}</td>
+                    <td><span class="dsc-tag ${r.proof==='平台提取'?'dsc-tag--info':r.proof==='检查'?'dsc-tag--warning':'dsc-tag--success'}">${r.proof}</span></td>
                     <td class="dsc-font-sm">${r.period}</td>
                     <td class="dsc-table__num"><span class="dsc-score__value" style="font-size:18px;">${r.score}</span></td>
                     <td style="max-width:200px;">${r.rule}</td>
@@ -497,7 +498,7 @@ function applyIndicatorFilters() {
     if (tds.length < 5) return;
     const bizText = tds[3].textContent;
     const catText = tds[1].textContent;
-    const periodText = tds[4].textContent;
+    const periodText = tds[5].textContent;
     const matchBiz = !biz || bizText.includes(biz);
     const matchCat = !cat || catText === cat;
     const matchPeriod = !period || periodText.includes(period);
@@ -619,6 +620,7 @@ function renderDataCollectionPage() {
         </div>
         ${COLLECT_TAB_GROUPS.map(g => `
           <div id="collectTab-${g.key}" style="${activeTab === g.key ? '' : 'display:none;'}">
+            ${g.key === 'overseas' ? '<div class="dsc-alert dsc-alert--info" style="margin-bottom:var(--space-md);">ⓘ 目前所有海外项目数据实际均为<strong>报送或检查</strong>，取数平台暂标注"—"；海外报表功能上线后部分报送数据可实现平台提取。</div>' : ''}
             <div class="dsc-table-wrapper">
               <table class="dsc-table">
                 <thead>
@@ -881,7 +883,7 @@ function triggerManualCollect() {
 }
 
 function openImportModal() {
-  showToast('导入功能：检查报告（合规管理类扣分证明资料，带审批流导入）等尚未在线化数据；云筑网履约额的商务确权产值已确认来源于数字商务系统、改为自动抓取，不再经手动补录通道', 'info');
+  showToast('检查录入通道（带审批流）：合规管理类扣分关联检查证明资料；验收合规性、资源管理等人工抽查判定类扣分，登记抽查记录与扣分依据后方可计分；云筑网履约额的商务确权产值已改为数字商务系统自动抓取，不再经手动补录通道', 'info');
 }
 
 // ============================================================
@@ -1477,10 +1479,18 @@ function openEditRuleModal(ruleId) {
         <input class="dsc-input" value="${rule.applicable}" />
       </div>
     </div>
-    <div class="dsc-form-row dsc-form-row--2">
+    <div class="dsc-form-row dsc-form-row--3">
       <div class="dsc-form-group">
         <label class="dsc-form-label">考核周期触发条件</label>
         <input class="dsc-input" value="${rule.period}" />
+      </div>
+      <div class="dsc-form-group">
+        <label class="dsc-form-label dsc-form-label--required">证明资料</label>
+        <select class="dsc-select" style="width:100%;">
+          <option ${rule.proof === '平台提取' ? 'selected' : ''}>平台提取</option>
+          <option ${rule.proof === '检查' ? 'selected' : ''}>检查</option>
+          <option ${rule.proof === '报送' ? 'selected' : ''}>报送</option>
+        </select>
       </div>
       <div class="dsc-form-group">
         <label class="dsc-form-label dsc-form-label--required">分值上限</label>

@@ -10,8 +10,8 @@
 // ============================================================
 const ASSESSMENT_RULES = [
   // ---------- 主业（总分84分，序号1-16） ----------
-  { id: 1, applicable: '主业', category: '目标引领', name: '云筑网履约额', period: '仅6月、12月触发', score: '7', rule: '未达标按缺口比例扣分', proof: '平台提取', source: 'DSC+数字商务（商务确权产值自动抓取）', standard: '云筑网履约额/本月累计产值×100%≥70%，每低1%扣1分；以商务确权值为基准；JMRH等项目产值扣除需生产副总签字确认；商务确权产值来源于数字商务系统' },
-  { id: 2, applicable: '主业', category: '目标引领', name: '采购成本降低率', period: '每月触发', score: '6', rule: '实际降低率低于目标值扣分', proof: '平台提取', source: 'DSC', standard: '平均采购成本降低率≥3.2%，每低0.1%扣1分' },
+  { id: 1, applicable: '主业', category: '目标引领', name: '云筑网履约额', period: '仅6月、12月触发', score: '7', rule: '未达标按缺口比例扣分', proof: '平台提取', source: 'DSC+数字商务', standard: '云筑网履约额/本月累计产值×100%≥70%，每低1%扣1分；以商务确权值为基准；JMRH等项目产值扣除需生产副总签字确认；商务确权产值来源于数字商务系统（自动抓取，不再经手动补录）' },
+  { id: 2, applicable: '主业', category: '目标引领', name: '采购成本降低率', period: '每月触发', score: '6', rule: '实际降低率低于目标值扣分', proof: '平台提取', source: 'DSC+数字商务', standard: '平均采购成本降低率≥3.2%，每低0.1%扣1分' },
   { id: 3, applicable: '主业', category: '目标引领', name: '物资设备采购效益率', period: '每月触发', score: '6', rule: '效益率低于目标值扣分', proof: '平台提取', source: 'DSC', standard: '平均物资设备采购效益率≥11%，每低0.5%扣1分' },
   { id: 4, applicable: '主业', category: '目标引领', name: '分包工程集中采购率', period: '仅3、6、9、12月触发', score: '7', rule: '未达标按比例扣分（单位差异化阈值）', proof: '平台提取', source: 'DSC', standard: '≥25%，每低1%扣1分；差异化目标：主业25%/土木、轨道10%/文旅5%/北京22%' },
   { id: 5, applicable: '主业', category: '目标引领', name: '物资设备集中采购率', period: '每月触发', score: '6', rule: '未达标按比例扣分（单位差异化阈值）', proof: '平台提取', source: 'DSC', standard: '≥90%，每低2%扣1分；差异化目标：装饰65%/新型建造44%/轨道公司54%/发展建设80%' },
@@ -21,30 +21,30 @@ const ASSESSMENT_RULES = [
   { id: 9, applicable: '主业', category: '目标引领', name: '平均采购时长', period: '每月触发', score: '3', rule: '超出标准天数按超期天数扣分', proof: '平台提取', source: 'DSC', standard: '平均采购时长≤32天，每增加1天扣1分' },
   { id: 10, applicable: '主业', category: '目标引领', name: '资源库优化', period: '仅3、6、9、12月触发', score: '4', rule: '休眠分供商清除率未达标扣分', proof: '平台提取', source: 'DSC', standard: '休眠（两年无合作）分供商清除率100%，每低1%扣1分' },
   { id: 11, applicable: '主业', category: '目标引领', name: '竣工项目资产周转率', period: '每月触发（延后2个月考核）', score: '4', rule: '周转率低于标杆扣分', proof: '平台提取', source: 'DSC', standard: '项目资产周转率≥70%，每低1%扣1分；延后2个月考核（6月考核1-4月竣工项目）' },
-  { id: 12, applicable: '主业', category: '平台应用', name: '数字供应链平台应用', period: '按月（上月26日-本月25日）', score: '6', rule: '按平台考核子表内容执行', proof: '平台提取', source: '平台考核子表（13项×0.06折算）', standard: '子表100分制，得分×0.06折算为本项6分；2、3月预考核，4月起正式考核' },
-  { id: 13, applicable: '主业', category: '数据治理', name: '数据治理', period: '每月触发', score: '6', rule: '按异常占比排名梯度扣分', proof: '平台提取', source: 'DSC结算单', standard: '采购成本降低率异常（>30%或<-30%）及物资设备采购效益率异常（>50%或<-30%）结算单占总计算单比例，按排名依次扣0.1分；承接原子表移出的两项异常数据考核' },
-  { id: 14, applicable: '主业', category: '验收合规性', name: '验收合规性', period: '每月触发', score: '4', rule: '按不合规项数量扣分（全量核查）', proof: '平台提取', source: 'DSC验收单', standard: '当月验收单据全量核查：四方验收、送货据资料、货实相符，不合规1条扣1分' },
-  { id: 15, applicable: '主业', category: '资源管理', name: '资源管理', period: '按月', score: '7', rule: '事件驱动扣分（5条）', proof: '平台提取', source: '投诉/上访事件、禁用分供商名单', standard: '①工信部正式批投诉0.1分/笔；②云筑网投诉逾期未办结0.05分/笔；③上访事件2-4分/次；④违规使用禁用分供商1分/起；⑤分供商评价完成率100%，未完成扣0.5分（1月、7月考核）' },
-  { id: 16, applicable: '主业', category: '合规管理', name: '合规管理', period: '按月', score: '5', rule: '事件驱动扣分（4条，上不封顶）', proof: '检查报告', source: '检查报告（带审批流导入）', standard: '①一标一检违法分包/围标串标0.5分/条，其他违规0.2分/条；②审计巡视0.1分/条；③无计划进场0.5分/笔上不封顶；④专项治理延期上报0.5分/次' },
+  { id: 12, applicable: '主业', category: '平台应用', name: '数字供应链平台应用', period: '按月（上月26日-本月25日）', score: '6', rule: '按平台考核子表内容执行', proof: '平台提取', source: '—', standard: '子表100分制，得分×0.06折算为本项6分；2、3月预考核，4月起正式考核' },
+  { id: 13, applicable: '主业', category: '数据治理', name: '数据治理', period: '每月触发', score: '6', rule: '按异常占比排名梯度扣分', proof: '平台提取', source: 'DSC', standard: '采购成本降低率异常（>30%或<-30%）及物资设备采购效益率异常（>50%或<-30%）结算单占总计算单比例，按排名依次扣0.1分；承接原子表移出的两项异常数据考核' },
+  { id: 14, applicable: '主业', category: '验收合规性', name: '验收合规性', period: '每月触发', score: '4', rule: '按不合规项数量扣分（全量核查）', proof: '检查', source: '—', standard: '当月验收单据全量核查：四方验收、送货据资料、货实相符，不合规1条扣1分；数据来自平台，平台不直接判定，需考核人主动抽查详情信息判断' },
+  { id: 15, applicable: '主业', category: '资源管理', name: '资源管理', period: '按月', score: '7', rule: '事件驱动扣分（5条）', proof: '检查', source: '—', standard: '①工信部正式批投诉0.1分/笔；②云筑网投诉逾期未办结0.05分/笔；③上访事件2-4分/次；④违规使用禁用分供商1分/起；⑤分供商评价完成率100%，未完成扣0.5分（1月、7月考核）；数据来自平台，人工抽查判定类扣分经检查录入通道登记抽查记录与扣分依据后计分' },
+  { id: 16, applicable: '主业', category: '合规管理', name: '合规管理', period: '按月', score: '5', rule: '事件驱动扣分（4条，上不封顶）', proof: '检查', source: '—', standard: '①一标一检违法分包/围标串标0.5分/条，其他违规0.2分/条；②审计巡视0.1分/条；③无计划进场0.5分/笔上不封顶；④专项治理延期上报0.5分/次' },
   // ---------- 海外（总分100分，序号1-8） ----------
-  { id: 17, applicable: '海外', category: '目标引领', name: '采购成本降低率', period: '按季（季度末月）', score: '20', rule: '实际降低率低于目标值扣分', proof: '平台提取', source: 'DSC', standard: '平均采购成本降低率≥3.2%，每低0.1%扣1分；与采购金额对比' },
-  { id: 18, applicable: '海外', category: '目标引领', name: '物资设备集中采购率', period: '按月', score: '20', rule: '未达标按比例扣分', proof: '平台提取', source: 'DSC', standard: '平均≥40%，每低1%扣1分' },
-  { id: 19, applicable: '海外', category: '目标引领', name: '平均采购时长', period: '按月', score: '10', rule: '超出标准天数按超期天数扣分', proof: '平台提取', source: 'DSC', standard: '平均采购时长≤32天，每增加1天扣1分' },
-  { id: 20, applicable: '海外', category: '重点工作', name: '海外供应链建设', period: '按月', score: '10', rule: '事件驱动扣分', proof: '报送', source: '工作计划/例会记录报送', standard: '按月组织海外采购物资例会，问题未及时解决1分/项；参与马来西亚、印度尼西亚采购共享中心工作，未完成/延迟0.5分/项' },
-  { id: 21, applicable: '海外', category: '重点工作', name: '月度重点工作挂图计划', period: '按月', score: '10', rule: '报送进度，按未完成项扣分', proof: '报送', source: '挂图计划报送', standard: '每季第一周报送挂图计划，每月25日报送进度；每月≥5项，每少1项或质量不高扣1分扣完为止；不报送/晚报送不得分' },
-  { id: 22, applicable: '海外', category: '重点工作', name: '资源管理', period: '按月', score: '10', rule: '事件驱动扣分', proof: '平台提取', source: '投诉/上访事件、禁用分供商名单', standard: '同主业"资源管理"（1）-（5）条款' },
-  { id: 23, applicable: '海外', category: '重点工作', name: '采购合规', period: '按月', score: '10', rule: '事件驱动扣分', proof: '检查报告', source: '检查报告（带审批流导入）', standard: '同主业"合规管理"（1）-（4）条款' },
-  { id: 24, applicable: '海外', category: '重点工作', name: '资源白名单', period: '按年（12月年末考核）', score: '10', rule: '按发布数量缺口扣分', proof: '报送', source: '白名单发布记录', standard: '年度发布≥20项出海资源白名单资源库，每少1项扣1.5分' },
+  { id: 17, applicable: '海外', category: '目标引领', name: '采购成本降低率', period: '按季（季度末月）', score: '20', rule: '实际降低率低于目标值扣分', proof: '报送', source: '—', standard: '平均采购成本降低率≥3.2%，每低0.1%扣1分；与采购金额对比；海外报表功能上线后可转平台提取' },
+  { id: 18, applicable: '海外', category: '目标引领', name: '物资设备集中采购率', period: '按月', score: '20', rule: '未达标按比例扣分', proof: '报送', source: '—', standard: '平均≥40%，每低1%扣1分；海外报表功能上线后可转平台提取' },
+  { id: 19, applicable: '海外', category: '目标引领', name: '平均采购时长', period: '按月', score: '10', rule: '超出标准天数按超期天数扣分', proof: '报送', source: '—', standard: '平均采购时长≤32天，每增加1天扣1分；海外报表功能上线后可转平台提取' },
+  { id: 20, applicable: '海外', category: '重点工作', name: '海外供应链建设', period: '按月', score: '10', rule: '事件驱动扣分', proof: '检查', source: '—', standard: '按月组织海外采购物资例会，问题未及时解决1分/项；参与马来西亚、印度尼西亚采购共享中心工作，未完成/延迟0.5分/项' },
+  { id: 21, applicable: '海外', category: '重点工作', name: '月度重点工作挂图计划', period: '按月', score: '10', rule: '报送进度，按未完成项扣分', proof: '报送', source: '—', standard: '每季第一周报送挂图计划，每月25日报送进度；每月≥5项，每少1项或质量不高扣1分扣完为止；不报送/晚报送不得分' },
+  { id: 22, applicable: '海外', category: '重点工作', name: '资源管理', period: '按月', score: '10', rule: '事件驱动扣分', proof: '报送', source: '—', standard: '同主业"资源管理"（1）-（5）条款；海外数据以报送为准，海外报表功能上线后可转平台提取' },
+  { id: 23, applicable: '海外', category: '重点工作', name: '采购合规', period: '按月', score: '10', rule: '事件驱动扣分', proof: '报送', source: '—', standard: '同主业"合规管理"（1）-（4）条款；海外数据以报送为准，海外报表功能上线后可转平台提取' },
+  { id: 24, applicable: '海外', category: '重点工作', name: '资源白名单', period: '按年（12月年末考核）', score: '10', rule: '按发布数量缺口扣分', proof: '报送', source: '—', standard: '年度发布≥20项出海资源白名单资源库，每少1项扣1.5分' },
   // ---------- 投资（总分100分，序号1-9） ----------
-  { id: 25, applicable: '投资', category: '目标引领', name: '采购成本降低率', period: '按季（季度末月）', score: '10', rule: '实际降低率低于目标值扣分', proof: '报送', source: '单位报送（核验后计分）', standard: '平均采购成本降低率≥3.2%，每低0.1%扣1分；与目标成本对比' },
-  { id: 26, applicable: '投资', category: '目标引领', name: '招标采购计划执行率', period: '按月', score: '10', rule: '执行率低于目标值按比例扣分', proof: '平台提取', source: 'DSC（城市运营报送）', standard: '当月采购计划执行率≥95%，每低1%扣1分' },
-  { id: 27, applicable: '投资', category: '目标引领', name: '在线评标率', period: '按月', score: '10', rule: '未达标按梯度扣分', proof: '平台提取', source: 'DSC', standard: '在线评标率≥98%，每低1%扣2分；选用云筑网部分' },
+  { id: 25, applicable: '投资', category: '目标引领', name: '采购成本降低率', period: '按季（季度末月）', score: '10', rule: '实际降低率低于目标值扣分', proof: '报送', source: '—', standard: '平均采购成本降低率≥3.2%，每低0.1%扣1分；与目标成本对比' },
+  { id: 26, applicable: '投资', category: '目标引领', name: '招标采购计划执行率', period: '按月', score: '10', rule: '执行率低于目标值按比例扣分', proof: '平台提取', source: 'DSC', standard: '当月采购计划执行率≥95%，每低1%扣1分；城市运营报送' },
+  { id: 27, applicable: '投资', category: '目标引领', name: '在线评标率', period: '按月', score: '10', rule: '未达标按梯度扣分', proof: '平台提取', source: '云筑网', standard: '在线评标率≥98%，每低1%扣2分；选用云筑网部分' },
   { id: 28, applicable: '投资', category: '目标引领', name: '公开采购率', period: '按月', score: '10', rule: '未达标按比例扣分', proof: '平台提取', source: '云筑网', standard: '公开采购率≥80%，每低1%扣1分；选用云筑网，结果公开' },
-  { id: 29, applicable: '投资', category: '目标引领', name: '平均采购时长', period: '按月', score: '10', rule: '超出标准天数按超期天数扣分', proof: '平台提取', source: 'DSC（城市运营报送）+东孚', standard: '平均采购时长≤32天，每增加1天扣1分；自发布采购公告起至完成成交' },
-  { id: 30, applicable: '投资', category: '重点工作', name: '月度重点工作挂图计划', period: '按季度（局供应链管理部查验）', score: '20', rule: '报送进度+查验评分', proof: '报送', source: '挂图计划+查验记录', standard: '每季第一周报送，每月25日报进度；每月≥3项，每少1项扣1分扣完为止；局供应链管理部按查验情况评分' },
-  { id: 31, applicable: '投资', category: '重点工作', name: '资源管理', period: '按月', score: '10', rule: '事件驱动扣分', proof: '平台提取', source: '投诉/上访事件、禁用分供商名单', standard: '同主业"资源管理"（1）-（5）条款；恶意投诉除外' },
-  { id: 32, applicable: '投资', category: '重点工作', name: '采购合规', period: '按月', score: '10', rule: '事件驱动扣分', proof: '检查报告', source: '检查报告（带审批流导入）', standard: '同主业"合规管理"（1）-（4）条款' },
-  { id: 33, applicable: '投资', category: '重点工作', name: '资源白名单', period: '按年（12月年末考核）', score: '10', rule: '按发布数量缺口扣分', proof: '报送', source: '白名单发布记录', standard: '年度发布≥6项白名单资源库，每少1项扣1.5分' },
+  { id: 29, applicable: '投资', category: '目标引领', name: '平均采购时长', period: '按月', score: '10', rule: '超出标准天数按超期天数扣分', proof: '平台提取', source: '云筑网', standard: '平均采购时长≤32天，每增加1天扣1分；①城市运营报送（DSC）；②东孚：取采购文件发布至招标结束；③考核口径：自发布采购公告起至完成成交' },
+  { id: 30, applicable: '投资', category: '重点工作', name: '月度重点工作挂图计划', period: '按季度（局供应链管理部查验）', score: '20', rule: '报送进度+查验评分', proof: '报送', source: '—', standard: '每季第一周报送，每月25日报进度；每月≥3项，每少1项扣1分扣完为止；局供应链管理部按查验情况评分' },
+  { id: 31, applicable: '投资', category: '重点工作', name: '资源管理', period: '按月', score: '10', rule: '事件驱动扣分', proof: '检查', source: '—', standard: '同主业"资源管理"（1）-（5）条款；恶意投诉除外；人工抽查判定类扣分经检查录入通道登记后计分' },
+  { id: 32, applicable: '投资', category: '重点工作', name: '采购合规', period: '按月', score: '10', rule: '事件驱动扣分', proof: '检查', source: '—', standard: '同主业"合规管理"（1）-（4）条款' },
+  { id: 33, applicable: '投资', category: '重点工作', name: '资源白名单', period: '按年（12月年末考核）', score: '10', rule: '按发布数量缺口扣分', proof: '报送', source: '—', standard: '年度发布≥6项白名单资源库，每少1项扣1.5分' },
 ];
 
 // 三业态总分与类别分值汇总（用于类别分值合计校验）
@@ -491,7 +491,7 @@ function buildJulyMainScores() {
     // 12 资源管理（事件驱动，7分）
     const r12 = events[p.unit] && events[p.unit].resource;
     add('资源管理', 7, r12 ? r12.score : 7, r12 ? r12.value : '本月无事件', '投诉/上访/禁用分供商/评价（1月、7月）', r12 ? r12.reason : '');
-    // 13 合规管理（事件驱动，检查报告证明，5分）
+    // 13 合规管理（事件驱动，检查证明，5分）
     const c13 = events[p.unit] && events[p.unit].compliance;
     add('合规管理', 5, c13 ? c13.score : 5, c13 ? c13.value : '本月无问题', '一标一检/审计巡视/无计划进场/专项治理', c13 ? c13.reason : '');
     const totalScore = _r(details.reduce((s, d) => s + d.actualScore, 0), 2);
@@ -553,11 +553,11 @@ const BIZ_MONTH_FULL = {
 
 // ============================================================
 // 数据采集任务列表 - 主业考核指标（2026年7月修订版新标准，16项）
-// 取数通道：DSC / DSC+数字商务 / 投诉上访事件 / 检查报告 / 平台子表
+// 取数通道：DSC / DSC+数字商务 / 检查（含人工抽查判定）/ 报送 / 平台子表
 // ============================================================
 const DATA_COLLECTION_TASKS = [
-  { id: 1, type: 'core', indicator: '云筑网履约额', source: 'DSC+数字商务（商务确权产值自动抓取）', method: 'API自动抓取', schedule: '仅6月、12月 26日 02:00', status: 'success', lastRun: '2026-06-26 02:00:32', records: 2450, exception: 5, note: '商务确权产值来源于数字商务系统，自动抓取；JMRH等项目产值扣除需生产副总签字确认' },
-  { id: 2, type: 'core', indicator: '采购成本降低率', source: 'DSC', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-06-26 02:01:15', records: 18456, exception: 23 },
+  { id: 1, type: 'core', indicator: '云筑网履约额', source: 'DSC+数字商务（商务确权产值来源于数字商务系统）', method: 'API自动抓取', schedule: '仅6月、12月 26日 02:00', status: 'success', lastRun: '2026-06-26 02:00:32', records: 2450, exception: 5, note: '商务确权产值自动抓取，不再经手动补录；JMRH等项目产值扣除需生产副总签字确认' },
+  { id: 2, type: 'core', indicator: '采购成本降低率', source: 'DSC+数字商务', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-06-26 02:01:15', records: 18456, exception: 23 },
   { id: 3, type: 'core', indicator: '物资设备采购效益率', source: 'DSC', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-06-26 02:02:08', records: 18210, exception: 18 },
   { id: 4, type: 'core', indicator: '分包工程集中采购率', source: 'DSC', method: 'API自动抓取', schedule: '仅3、6、9、12月 26日 02:00', status: 'success', lastRun: '2026-06-26 02:02:45', records: 8930, exception: 0, note: '单位差异化阈值：主业25%/土木轨道10%/文旅5%/北京22%' },
   { id: 5, type: 'core', indicator: '物资设备集中采购率', source: 'DSC', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-06-26 02:03:22', records: 15620, exception: 0, note: '单位差异化阈值：装饰65%/新型建造44%/轨道54%/发展建设80%' },
@@ -567,10 +567,10 @@ const DATA_COLLECTION_TASKS = [
   { id: 9, type: 'core', indicator: '平均采购时长', source: 'DSC', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-06-26 02:06:30', records: 24560, exception: 0 },
   { id: 10, type: 'core', indicator: '资源库优化', source: 'DSC（休眠分供商名单）', method: 'API自动抓取', schedule: '仅3、6、9、12月 26日 02:00', status: 'success', lastRun: '2026-06-26 02:06:55', records: 1560, exception: 0, note: '休眠（两年无合作）分供商清除率' },
   { id: 11, type: 'core', indicator: '竣工项目资产周转率', source: 'DSC', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-06-26 02:07:10', records: 1280, exception: 0, note: '延后2个月考核' },
-  { id: 12, type: 'core', indicator: '数据治理', source: 'DSC结算单', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-06-26 02:07:35', records: 18456, exception: 12, note: '两类异常结算单按排名梯度扣0.1分；承接原子表移出的两项异常数据考核' },
-  { id: 13, type: 'core', indicator: '验收合规性', source: 'DSC验收单', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-06-26 02:07:50', records: 9860, exception: 8, note: '当月验收单据全量核查（四方验收/送货据/货实相符）' },
-  { id: 14, type: 'core', indicator: '资源管理', source: '投诉/上访事件、禁用分供商名单', method: '事件归集', schedule: '每月26日 02:00', status: 'pending', lastRun: '-', records: 0, exception: 0, note: '工信部批投诉/云筑网投诉/上访/禁用分供商/分供商评价（1月、7月）' },
-  { id: 15, type: 'core', indicator: '合规管理', source: '检查报告（一标一检/审计巡视/专项治理）', method: '检查报告录入（审批流）', schedule: '每月15日前上报', status: 'pending', lastRun: '-', records: 0, exception: 0, note: '扣分须关联检查报告证明资料，导入走审批流' },
+  { id: 12, type: 'core', indicator: '数据治理', source: 'DSC', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-06-26 02:07:35', records: 18456, exception: 12, note: '两类异常结算单按排名梯度扣0.1分；承接原子表移出的两项异常数据考核' },
+  { id: 13, type: 'core', indicator: '验收合规性', source: 'DSC验收单', method: 'API抓取+检查录入（人工抽查判定）', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-06-26 02:07:50', records: 9860, exception: 8, note: '当月验收单据全量核查；数据来自平台，平台不直接判定，需考核人主动抽查详情信息判断' },
+  { id: 14, type: 'core', indicator: '资源管理', source: '投诉/上访事件、禁用分供商名单', method: '事件归集+检查录入（抽查判定）', schedule: '每月26日 02:00', status: 'pending', lastRun: '-', records: 0, exception: 0, note: '工信部批投诉/云筑网投诉/上访/禁用分供商/分供商评价（1月、7月）；人工抽查判定类扣分经检查录入通道登记后计分' },
+  { id: 15, type: 'core', indicator: '合规管理', source: '检查（一标一检/审计巡视/专项治理）', method: '检查录入（审批流）', schedule: '每月15日前上报', status: 'pending', lastRun: '-', records: 0, exception: 0, note: '扣分须关联检查证明资料，导入走审批流；验收合规性、资源管理等抽查判定类扣分同样经检查录入通道登记' },
   { id: 16, type: 'core', indicator: '数字供应链平台应用', source: '平台考核子表（13项）', method: 'API自动抓取 + 手动填报', schedule: '每月27日 09:00导出', status: 'success', lastRun: '2026-06-27 09:00:00', records: 13, exception: 0, note: '子表100分制×0.06折算6分；嵌套平台应用考核子表项', nested: true },
 ];
 
@@ -682,13 +682,13 @@ const BUSINESS_TYPES = [
 // 海外考核指标采集任务（2026年7月修订版新标准，8项）
 // ============================================================
 const OVERSEAS_COLLECTION_TASKS = [
-  { id: 1, indicator: '采购成本降低率', source: 'DSC', method: 'API自动抓取', schedule: '季度末月（3/6/9/12月）26日 02:00', status: 'pending', lastRun: '-', records: 0, exception: 0, note: '按季考核，下一触发时点9月26日；与采购金额对比' },
-  { id: 2, indicator: '物资设备集中采购率', source: 'DSC', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-07-26 02:01:20', records: 1860, exception: 0, note: '目标值≥40%' },
-  { id: 3, indicator: '平均采购时长', source: 'DSC', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-07-26 02:02:05', records: 1240, exception: 0 },
-  { id: 4, indicator: '海外供应链建设', source: '单位报送（例会记录/工作计划）', method: '报送核验', schedule: '每月25日 18:00 报送截止', status: 'success', lastRun: '2026-07-24 16:40', records: 12, exception: 0, note: '参与马来西亚、印度尼西亚采购共享中心工作计划' },
+  { id: 1, indicator: '采购成本降低率', source: '单位报送', method: '报送核验', schedule: '季度末月（3/6/9/12月）报送截止', status: 'pending', lastRun: '-', records: 0, exception: 0, note: '按季考核，与采购金额对比；海外报表功能上线后可转平台提取' },
+  { id: 2, indicator: '物资设备集中采购率', source: '单位报送', method: '报送核验', schedule: '每月25日 报送截止', status: 'success', lastRun: '2026-07-24 16:20', records: 12, exception: 0, note: '目标值≥40%；海外报表功能上线后可转平台提取' },
+  { id: 3, indicator: '平均采购时长', source: '单位报送', method: '报送核验', schedule: '每月25日 报送截止', status: 'success', lastRun: '2026-07-24 16:25', records: 10, exception: 0, note: '海外报表功能上线后可转平台提取' },
+  { id: 4, indicator: '海外供应链建设', source: '检查（例会记录/工作计划）', method: '检查录入', schedule: '每月25日 18:00 前登记', status: 'success', lastRun: '2026-07-24 16:40', records: 12, exception: 0, note: '参与马来西亚、印度尼西亚采购共享中心工作计划；海外数据以检查为准' },
   { id: 5, indicator: '月度重点工作挂图计划', source: '单位报送', method: '报送核验', schedule: '每季第一周报计划 / 每月25日报进度', status: 'success', lastRun: '2026-07-24 17:02', records: 5, exception: 0, note: '每月≥5项，每少1项扣1分扣完为止；不报送晚报送不得分' },
-  { id: 6, indicator: '资源管理', source: '投诉/上访事件、禁用分供商名单', method: '事件归集', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-07-26 02:03:10', records: 86, exception: 0, note: '同主业资源管理（1）-（5）条款' },
-  { id: 7, indicator: '采购合规', source: '检查报告（带审批流导入）', method: '检查报告录入（审批流）', schedule: '事件驱动', status: 'success', lastRun: '2026-07-26 02:03:40', records: 3, exception: 0, note: '同主业合规管理（1）-（4）条款' },
+  { id: 6, indicator: '资源管理', source: '单位报送（投诉/上访事件等）', method: '报送核验', schedule: '每月25日 报送截止', status: 'success', lastRun: '2026-07-24 17:10', records: 8, exception: 0, note: '同主业资源管理（1）-（5）条款；海外数据以报送为准，海外报表功能上线后可转平台提取' },
+  { id: 7, indicator: '采购合规', source: '检查（带审批流导入）', method: '检查录入（审批流）', schedule: '事件驱动', status: 'success', lastRun: '2026-07-26 02:03:40', records: 3, exception: 0, note: '同主业合规管理（1）-（4）条款；海外数据以报送/检查为准，海外报表功能上线后可转平台提取' },
   { id: 8, indicator: '资源白名单', source: '单位报送', method: '报送核验', schedule: '按年（12月年末考核）', status: 'pending', lastRun: '-', records: 0, exception: 0, note: '年度发布≥20项，每少1项扣1.5分；年末一次性计分' },
 ];
 
@@ -697,13 +697,13 @@ const OVERSEAS_COLLECTION_TASKS = [
 // ============================================================
 const INVEST_COLLECTION_TASKS = [
   { id: 1, indicator: '采购成本降低率', source: '单位报送（核验后计分）', method: '报送核验', schedule: '季度末月（3/6/9/12月）报送', status: 'pending', lastRun: '-', records: 0, exception: 0, note: '按季考核，与目标成本对比' },
-  { id: 2, indicator: '招标采购计划执行率', source: 'DSC（城市运营报送）', method: 'API自动抓取+报送核验', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-07-26 02:01:15', records: 420, exception: 0 },
-  { id: 3, indicator: '在线评标率', source: 'DSC', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-07-26 02:02:00', records: 310, exception: 0, note: '选用云筑网的部分' },
+  { id: 2, indicator: '招标采购计划执行率', source: 'DSC', method: 'API自动抓取+报送核验', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-07-26 02:01:15', records: 420, exception: 0, note: '城市运营报送' },
+  { id: 3, indicator: '在线评标率', source: '云筑网', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-07-26 02:02:00', records: 310, exception: 0, note: '选用云筑网的部分' },
   { id: 4, indicator: '公开采购率', source: '云筑网', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-07-26 02:02:35', records: 280, exception: 0, note: '云筑网入湖，DSC获取' },
-  { id: 5, indicator: '平均采购时长', source: 'DSC（城市运营报送）+东孚', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-07-26 02:03:10', records: 360, exception: 1, note: '东孚取采购文件发布至招标结束' },
+  { id: 5, indicator: '平均采购时长', source: '云筑网', method: 'API自动抓取', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-07-26 02:03:10', records: 360, exception: 1, note: '①城市运营报送（DSC）；②东孚：取采购文件发布至招标结束；③考核口径：自发布采购公告起至完成成交' },
   { id: 6, indicator: '月度重点工作挂图计划', source: '单位报送+查验评分', method: '报送核验+查验录入', schedule: '每季第一周报计划 / 每月25日报进度', status: 'success', lastRun: '2026-07-24 17:10', records: 6, exception: 0, note: '每月≥3项；局供应链管理部查验评分，季度末计分' },
-  { id: 7, indicator: '资源管理', source: '投诉/上访事件、禁用分供商名单', method: '事件归集', schedule: '每月26日 02:00', status: 'success', lastRun: '2026-07-26 02:03:45', records: 42, exception: 0, note: '恶意投诉除外' },
-  { id: 8, indicator: '采购合规', source: '检查报告（带审批流导入）', method: '检查报告录入（审批流）', schedule: '事件驱动', status: 'success', lastRun: '2026-07-26 02:04:05', records: 2, exception: 0 },
+  { id: 7, indicator: '资源管理', source: '检查（投诉/上访事件、禁用分供商名单）', method: '检查录入（抽查判定）', schedule: '事件驱动', status: 'success', lastRun: '2026-07-26 02:03:45', records: 42, exception: 0, note: '恶意投诉除外；人工抽查判定类扣分经检查录入通道登记后计分' },
+  { id: 8, indicator: '采购合规', source: '检查（带审批流导入）', method: '检查录入（审批流）', schedule: '事件驱动', status: 'success', lastRun: '2026-07-26 02:04:05', records: 2, exception: 0 },
   { id: 9, indicator: '资源白名单', source: '单位报送', method: '报送核验', schedule: '按年（12月年末考核）', status: 'pending', lastRun: '-', records: 0, exception: 0, note: '年度发布≥6项，每少1项扣1.5分；年末一次性计分' },
 ];
 
@@ -720,6 +720,7 @@ const REPORTING_TASKS = [
   { id: 6, item: '7月专项治理问题上报', unit: '主业各单位', biz: '主业', deadline: '2026-07-15（每月15日）', submitTime: '2026-07-14 17:30', status: 'ontime', content: '工程建设和招投标领域问题 0项' },
   { id: 7, item: '7月专项治理问题上报', unit: '东北公司', biz: '主业', deadline: '2026-07-15（每月15日）', submitTime: '2026-07-16 09:05', status: 'overdue', content: '延期1天上报', note: '延期上报扣0.5分/次' },
   { id: 8, item: '2026Q3采购成本降低率数据报送', unit: '东孚公司', biz: '投资', deadline: '2026-09-30（季度末月）', submitTime: '-', status: 'pending', content: '按季报送，核验后计分' },
+  { id: 9, item: '2026Q3采购成本降低率数据报送', unit: '海外公司', biz: '海外', deadline: '2026-09-30（季度末月）', submitTime: '-', status: 'pending', content: '海外各项现阶段以报送为主，经局供应链管理部核验后计分' },
 ];
 
 // ============================================================
