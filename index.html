@@ -19,6 +19,17 @@
       <div class="dsc-header__nav-item dsc-header__nav-item--active">智慧运营</div>
     </nav>
     <div class="dsc-header__right">
+      <!-- V3.1 五类角色与上下文切换器 -->
+      <div class="dsc-header__role" title="角色与上下文切换">
+        <span class="dsc-header__role-label">角色</span>
+        <select class="dsc-header__role-select" id="roleSwitch">
+          <option value="局总部考核专员">局总部考核专员</option>
+          <option value="局供应链部领导">局供应链部领导</option>
+          <option value="二级考核专员（一公司）">二级考核专员（一公司）</option>
+          <option value="二级分管领导（一公司）">二级分管领导（一公司）</option>
+          <option value="三级经办人（济南分公司）">三级经办人（济南分公司）</option>
+        </select>
+      </div>
       <div class="dsc-header__recycle" title="站内信">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
           <path d="M8 1.8a4 4 0 0 0-4 4v2.5l-1.5 2.5H13.5L12 8.3V5.8a4 4 0 0 0-4-4z"/>
@@ -28,7 +39,7 @@
       </div>
       <div class="dsc-header__user">
         <div class="dsc-header__avatar"></div>
-        <span>租户管理员</span>
+        <span id="headerUserName">张考核</span>
       </div>
     </div>
   </header>
@@ -70,21 +81,33 @@
       <span class="dsc-sidebar__caret dsc-sidebar__caret--open" id="assessmentCaret"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></span>
     </div>
     <ul class="dsc-sidebar__submenu dsc-sidebar__submenu--open" id="assessmentSubmenu">
-      <li class="dsc-sidebar__submenu-item dsc-sidebar__submenu-item--active" data-page="rules-config">
+      <li class="dsc-sidebar__submenu-item dsc-sidebar__submenu-item--active" data-page="rules-config" data-scope="hq">
         <span class="dsc-sidebar__submenu-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5h9M14 4.5h.5"/><path d="M1.5 11.5h4M9.5 11.5h5"/><circle cx="12" cy="4.5" r="1.3"/><circle cx="7" cy="11.5" r="1.3"/></svg></span>
         <span class="dsc-sidebar__menu-text">考核规则配置</span>
       </li>
-      <li class="dsc-sidebar__submenu-item" data-page="data-collection">
+      <li class="dsc-sidebar__submenu-item" data-page="data-collection" data-scope="hq">
         <span class="dsc-sidebar__submenu-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="8" cy="4.5" rx="5.5" ry="2"/><path d="M2.5 4.5v7c0 1.1 2.4 2 5.5 2s5.5-.9 5.5-2v-7M2.5 8c0 1.1 2.4 2 5.5 2s5.5-.9 5.5-2"/></svg></span>
-        <span class="dsc-sidebar__menu-text">数据采集与预处理</span>
+        <span class="dsc-sidebar__menu-text">数据采集与编辑</span>
       </li>
-      <li class="dsc-sidebar__submenu-item" data-page="score-ledger">
+      <li class="dsc-sidebar__submenu-item" data-page="score-ledger" data-scope="hq">
         <span class="dsc-sidebar__submenu-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13V4M7 13V2.5M11.5 13V6M2 13h12"/></svg></span>
         <span class="dsc-sidebar__menu-text">月度跑批与打分台账</span>
       </li>
-      <li class="dsc-sidebar__submenu-item" data-page="appeal-approval">
+      <li class="dsc-sidebar__submenu-item" data-page="appeal-approval" data-scope="hq">
         <span class="dsc-sidebar__submenu-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 1.5h9l3 3v10h-12z"/><path d="M11.5 1.5v3h3M5 8.5l1.8 1.8 3.7-3.8"/></svg></span>
         <span class="dsc-sidebar__menu-text">申诉审批与纠正</span>
+      </li>
+      <!-- V3.0 新增：二级考核专员工作台（自主考评自治空间） -->
+      <li class="dsc-sidebar__submenu-item" data-page="tertiary-workspace" data-scope="hq">
+        <span class="dsc-sidebar__submenu-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1"/><rect x="9" y="9" width="5.5" height="5.5" rx="1"/></svg></span>
+        <span class="dsc-sidebar__menu-text">二级考核专员工作台</span>
+        <span class="dsc-sidebar__badge">二级自主考评</span>
+      </li>
+      <!-- V3.1：三级业务门户（三级单位角色可见，含穿透追溯/我的报送/自主考评） -->
+      <li class="dsc-sidebar__submenu-item" data-page="tertiary-portal" id="portalMenuItem" data-scope="l3" style="display:none;">
+        <span class="dsc-sidebar__submenu-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="1.5" width="4" height="3" rx="0.8"/><rect x="1.5" y="11.5" width="4" height="3" rx="0.8"/><rect x="10.5" y="11.5" width="4" height="3" rx="0.8"/><path d="M8 4.5V8M3.5 11.5V8h9v3.5"/></svg></span>
+        <span class="dsc-sidebar__menu-text">三级业务门户</span>
+        <span class="dsc-sidebar__badge dsc-sidebar__badge--plain">填报</span>
       </li>
     </ul>
 

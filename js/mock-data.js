@@ -793,3 +793,505 @@ SPECIAL_ADJUSTMENTS.push(
   { id: 'ADJ-011', appealId: 'AP202607003', unit: '华中公司', indicator: '资源管理', originalScore: 6.5, adjustedScore: 7.0, delta: '+0.5', operator: '李浩宇', time: '2026-07-31 15:05', status: '已完成' },
   { id: 'ADJ-012', appealId: 'AP202607005', unit: '东北公司', indicator: '合规管理', originalScore: 4.5, adjustedScore: 4.5, delta: '0', operator: '李浩宇', time: '2026-07-31 09:42', status: '无需纠正' }
 );
+
+// ============================================================
+// ============ 以下为 V3.0 双线穿透增量数据 ==================
+// ============================================================
+
+// ------------------------------------------------------------
+// 1. 组织机构树（局—二级—三级）
+// 依据《组织机构树_COM_ORG筛选展开》：1 个局总部 / 28 家二级单位 / 161 家三级单位
+// 三级单位自动继承上级二级单位业态标签（主业/海外/投资）
+// ------------------------------------------------------------
+const ORG_L2_DEFS = [
+  // —— 主业单位（18家） ——
+  { code: '8B-1C',   name: '中建八局第一建设有限公司', short: '一公司',   biz: '主业', l3: ['济南','青岛','中原','华东','华南','华中','西北','西南','华北','东北','基础设施','安装','装饰'] },
+  { code: '8B-2C',   name: '中建八局第二建设有限公司', short: '二公司',   biz: '主业', l3: ['山东','华中','广西','北京','上海','江苏','浙江','安徽','河南','河北','广东','深圳','四川','重庆','陕西','新疆','基础设施','安装'] },
+  { code: '8B-3C',   name: '中建八局第三建设有限公司', short: '三公司',   biz: '主业', l3: ['南京','苏南','苏北','安徽','山东'] },
+  { code: '8B-4C',   name: '中建八局第四建设有限公司', short: '四公司',   biz: '主业', l3: ['青岛','济南','烟台','潍坊','临沂'] },
+  { code: '8B-DB',   name: '中建八局东北公司',         short: '东北公司', biz: '主业', l3: ['辽宁','吉林','黑龙江','大连','沈阳'] },
+  { code: '8B-ZCB',  name: '中建八局总承包公司',       short: '总承包公司', biz: '主业', l3: ['上海','江苏','浙江','安徽','江西'] },
+  { code: '8B-NF',   name: '中建八局南方公司',         short: '南方公司', biz: '主业', l3: ['广州','深圳','东莞','珠海','佛山'] },
+  { code: '8B-XN',   name: '中建八局西南公司',         short: '西南公司', biz: '主业', l3: ['成都','重庆','昆明','贵阳','拉萨'] },
+  { code: '8B-HN',   name: '中建八局华南公司',         short: '华南公司', biz: '主业', l3: ['南宁','海口','厦门','福州','泉州'] },
+  { code: '8B-HB',   name: '中建八局华北公司',         short: '华北公司', biz: '主业', l3: ['北京','天津','石家庄','太原','呼和浩特'] },
+  { code: '8B-FZJS', name: '中建八局发展建设有限公司', short: '发展建设公司', biz: '主业', l3: ['郑州','武汉','长沙','南昌','合肥'] },
+  { code: '8B-XB',   name: '中建八局西北公司',         short: '西北公司', biz: '主业', l3: ['西安','兰州','银川','西宁','乌鲁木齐'] },
+  { code: '8B-SH',   name: '中建八局上海公司',         short: '上海公司', biz: '主业', l3: ['浦东','浦西','临港','虹桥','嘉定'] },
+  { code: '8B-ZJ',   name: '中建八局浙江公司',         short: '浙江公司', biz: '主业', l3: ['杭州','宁波','温州','绍兴','嘉兴'] },
+  { code: '8B-HZ',   name: '中建八局华中公司',         short: '华中公司', biz: '主业', l3: ['武汉','长沙','郑州','南昌','宜昌'] },
+  { code: '8B-BJ',   name: '中建八局北京公司',         short: '北京公司', biz: '主业', l3: ['海淀','朝阳','通州','大兴','昌平'] },
+  { code: '8B-TM',   name: '中建八局土木公司',         short: '土木公司', biz: '主业', l3: ['华北','华东','华南','西南','基础设施'] },
+  { code: '8B-GD',   name: '中建八局轨道交通公司',     short: '轨道公司', biz: '主业', l3: ['华东','华南','华北','西南','城轨'] },
+  // —— 专业/创新单位（7家） ——
+  { code: '8B-ZS',   name: '中建八局装饰公司',         short: '装饰公司', biz: '主业', l3: ['华东','华北','华南','西南','设计'] },
+  { code: '8B-GJG',  name: '中建八局钢结构工程公司',   short: '钢结构工程公司', biz: '主业', l3: ['华东','华北','华南','制造','设计'] },
+  { code: '8B-AZ',   name: '中建八局安装公司',         short: '安装公司', biz: '主业', l3: ['华东','华北','华南','西南','机电'] },
+  { code: '8B-XXJZ', name: '中建八局新型建造工程公司', short: '新型建造工程公司', biz: '主业', l3: ['华东','华南','华北','西南','华中'] },
+  { code: '8B-WL',   name: '中建八局文旅博览投资发展有限公司', short: '文旅博览投资发展公司', biz: '投资', l3: ['华东','华南','华北','西南','运营'] },
+  { code: '8B-HJKJ', name: '中建八局环境科技公司',     short: '环境科技公司', biz: '主业', l3: ['华东','华北','华南','西南','华中'] },
+  { code: '8B-GZCB', name: '中建八局工程总承包工程公司', short: '工程总承包工程公司', biz: '主业', l3: ['华东','华北','华南','西南','华中'] },
+  // —— 海外单位（1家） ——
+  { code: '8B-OVERSEAS', name: '中建八局海外公司',     short: '海外公司', biz: '海外', l3: ['马来西亚','印度尼西亚','埃及','阿尔及利亚'] },
+  // —— 投资平台（2家） ——
+  { code: '8B-DONGFU', name: '上海中建东孚投资发展有限公司', short: '东孚公司', biz: '投资', l3: ['上海','南京','杭州','苏州','合肥','物业'] },
+  { code: '8B-CSYY', name: '中建八局城市运营公司',     short: '城市运营公司', biz: '投资', l3: ['上海','南京','杭州','成都','武汉'] },
+];
+
+// 新设不满月（当月跳过考核）标记：组织编码后缀
+const ORG_NEWLY_CREATED = ['8B-3C-05', '8B-CSYY-05'];
+
+function buildOrgTree() {
+  const l2Nodes = ORG_L2_DEFS.map((d, i) => {
+    const children = d.l3.map((suffix, j) => {
+      const code = d.code + '-' + String(j + 1).padStart(2, '0');
+      return {
+        org_id: 'ORG-L3-' + String(i + 1).padStart(3, '0') + String(j + 1).padStart(2, '0'),
+        org_code: code,
+        org_name: d.name + suffix + '分公司',
+        org_level: '三级单位',
+        business_type: d.biz,
+        parent_org_name: d.name,
+        child_count: 0,
+        project_count: 3 + ((i * 5 + j * 3) % 7),
+        status: ORG_NEWLY_CREATED.includes(code) ? '新设不满月' : 'active',
+      };
+    });
+    return {
+      org_id: 'ORG-L2-' + String(i + 1).padStart(3, '0'),
+      org_code: d.code,
+      org_name: d.name,
+      org_level: '二级单位',
+      business_type: d.biz,
+      parent_org_name: '中国建筑第八工程局有限公司',
+      child_count: children.length,
+      project_count: children.reduce((n, c) => n + c.project_count, 0),
+      status: 'active',
+      children,
+    };
+  });
+  return {
+    org_id: 'ORG-ROOT',
+    org_code: 'CSCEC8B',
+    org_name: '中国建筑第八工程局有限公司',
+    org_level: '局',
+    business_type: '综合',
+    parent_org_name: '—',
+    child_count: l2Nodes.length,
+    project_count: l2Nodes.reduce((n, c) => n + c.project_count, 0),
+    status: 'active',
+    children: l2Nodes,
+  };
+}
+
+const ORG_TREE = buildOrgTree();
+const ORG_STATS = {
+  l1: 1,
+  l2: ORG_TREE.children.length,
+  l3: ORG_TREE.children.reduce((n, u) => n + u.children.length, 0),
+};
+
+// ------------------------------------------------------------
+// 2. 平台子表「取数方式」标注（V3.1 修订）
+// 13 项中 7 项为「平台抽取+考核员编辑」（子表序号 1/3/5/7/9/11/13），其余 6 项为「平台全自动抽取」
+// ------------------------------------------------------------
+const EDITABLE_SUB_IDS = [1, 3, 5, 7, 9, 11, 13];
+PLATFORM_RULES.forEach(r => {
+  r.fetch_mode = EDITABLE_SUB_IDS.includes(r.id) ? '平台抽取+考核员编辑' : '平台全自动抽取';
+});
+
+// ------------------------------------------------------------
+// 3. 平台抽取数据台账与二次编辑（V3.1 核心重塑）
+// 废除“任务工单式干预窗口（派单 / 倒计时 / 熔断）”：考核员直接在普通平台抽取
+// 台账上「二次编辑（行内 / 弹窗）」或「Excel 批量导入」覆盖系统自动值，
+// 并保留「系统自动抽取值 vs 最终生效计算值」双值对比与修改留痕。
+// ------------------------------------------------------------
+const EXTRACT_ADJUST_RECORDS = [
+  // —— 主业 ——
+  { record_id: 'EX-202607-001', biz: '主业', target_org_name: '中建八局第一建设有限公司', short_org: '一公司', indicator_name: '结算调差金额规范性', dimension_name: '物资管理-结算管理', system_extracted_value: '-10.0分 (单笔调差异常)', final_effective_value: '0.0分 (核验合规，不扣分)', is_manual_modified: true, value_status: 'MANUAL_MODIFIED', modify_reason_desc: '项目部已补交特大桥梁调差联合会签凭据，经复核金额合规，人工修正扣分', modified_by_info: '张考核 (07-26 14:20)', support_voucher: 'TC-202607-0081' },
+  { record_id: 'EX-202607-002', biz: '主业', target_org_name: '中建八局第二建设有限公司', short_org: '二公司', indicator_name: '结算办理率(产值录入)', dimension_name: '物资管理-结算管理', system_extracted_value: '91.2% (扣15.2分)', final_effective_value: '91.2% (扣15.2分)', is_manual_modified: false, value_status: 'AUTO_CALCULATED', modify_reason_desc: null, modified_by_info: null, support_voucher: null },
+  { record_id: 'EX-202607-003', biz: '主业', target_org_name: '中建八局第三建设有限公司', short_org: '三公司', indicator_name: '物料名称准确率', dimension_name: '采购管理-项目采购计划', system_extracted_value: '扣 5.0 分 (1笔备注明细)', final_effective_value: '扣 2.0 分 (核减1笔)', is_manual_modified: true, value_status: 'MANUAL_MODIFIED', modify_reason_desc: '其中 1 笔已在备注栏补充三级分类名称，经核验符合填报要求，核减 3 分', modified_by_info: '张考核 (07-26 15:05)', support_voucher: 'MD-202607-0033' },
+  { record_id: 'EX-202607-004', biz: '主业', target_org_name: '中建八局第四建设有限公司', short_org: '四公司', indicator_name: '采购成本降低率', dimension_name: '采购管理-采购成本分析', system_extracted_value: '2.95% (扣 2.5 分)', final_effective_value: '3.45% (扣 0 分)', is_manual_modified: true, value_status: 'MANUAL_MODIFIED', modify_reason_desc: '商务确权口径调整，按最新确权值重算降低率，达标不扣分', modified_by_info: '张考核 (07-26 15:30)', support_voucher: 'SW-202607-0117' },
+  { record_id: 'EX-202607-005', biz: '主业', target_org_name: '中建八局轨道交通公司', short_org: '轨道公司', indicator_name: '平均采购时长', dimension_name: '采购管理-采购时长', system_extracted_value: '34.2天 (扣 2.2 分)', final_effective_value: '34.2天 (扣 2.2 分)', is_manual_modified: false, value_status: 'AUTO_CALCULATED', modify_reason_desc: null, modified_by_info: null, support_voucher: null },
+  { record_id: 'EX-202607-006', biz: '主业', target_org_name: '中建八局土木公司', short_org: '土木公司', indicator_name: '物资设备采购效益率', dimension_name: '物资管理-效益分析', system_extracted_value: '10.6% (扣 0.8 分)', final_effective_value: '10.6% (扣 0.8 分)', is_manual_modified: false, value_status: 'AUTO_CALCULATED', modify_reason_desc: null, modified_by_info: null, support_voucher: null },
+  // —— 海外 ——
+  { record_id: 'EX-202607-007', biz: '海外', target_org_name: '中建八局海外公司', short_org: '海外公司', indicator_name: '物资设备集中采购率', dimension_name: '目标引领', system_extracted_value: '38.5% (扣 1.5 分)', final_effective_value: '38.5% (扣 1.5 分)', is_manual_modified: false, value_status: 'AUTO_CALCULATED', modify_reason_desc: null, modified_by_info: null, support_voucher: null },
+  { record_id: 'EX-202607-008', biz: '海外', target_org_name: '中建八局海外公司', short_org: '海外公司', indicator_name: '采购成本降低率', dimension_name: '目标引领', system_extracted_value: '3.05% (扣 3.0 分)', final_effective_value: '3.15% (扣 1.0 分)', is_manual_modified: true, value_status: 'MANUAL_MODIFIED', modify_reason_desc: '汇率折算口径修正为合同签订日汇率，按调整后口径重算降低率', modified_by_info: '张考核 (07-26 16:10)', support_voucher: 'HW-202607-0007' },
+  // —— 投资 ——
+  { record_id: 'EX-202607-009', biz: '投资', target_org_name: '上海中建东孚投资发展有限公司', short_org: '东孚公司', indicator_name: '公开采购率', dimension_name: '目标引领', system_extracted_value: '78.5% (扣 1.5 分)', final_effective_value: '78.5% (扣 1.5 分)', is_manual_modified: false, value_status: 'AUTO_CALCULATED', modify_reason_desc: null, modified_by_info: null, support_voucher: null },
+  { record_id: 'EX-202607-010', biz: '投资', target_org_name: '中建八局城市运营公司', short_org: '城市运营公司', indicator_name: '招标采购计划执行率', dimension_name: '目标引领', system_extracted_value: '93.8% (扣 1.2 分)', final_effective_value: '93.8% (扣 1.2 分)', is_manual_modified: false, value_status: 'AUTO_CALCULATED', modify_reason_desc: null, modified_by_info: null, support_voucher: null },
+  // —— 平台应用子表 ——
+  { record_id: 'EX-202607-011', biz: '平台子表', target_org_name: '中建八局第一建设有限公司', short_org: '一公司', indicator_name: '年度集采计划上线率', dimension_name: '采购管理-采购计划', system_extracted_value: '扣 5.0 分 (未上线)', final_effective_value: '0.0分 (已补充上线)', is_manual_modified: true, value_status: 'MANUAL_MODIFIED', modify_reason_desc: '年度集采计划已于 7月26日补充审批完成，经核验计划期间符合要求，撤销扣分', modified_by_info: '张考核 (07-26 16:40)', support_voucher: 'JS-202607-0021' },
+  { record_id: 'EX-202607-012', biz: '平台子表', target_org_name: '中建八局第二建设有限公司', short_org: '二公司', indicator_name: '物料名称准确率', dimension_name: '采购管理-项目采购计划', system_extracted_value: '扣 10.0 分 (2笔)', final_effective_value: '扣 10.0 分 (2笔)', is_manual_modified: false, value_status: 'AUTO_CALCULATED', modify_reason_desc: null, modified_by_info: null, support_voucher: null },
+  { record_id: 'EX-202607-013', biz: '平台子表', target_org_name: '中建八局第三建设有限公司', short_org: '三公司', indicator_name: '结算办理率(产值录入)', dimension_name: '物资管理-结算管理', system_extracted_value: '扣 20.0 分 (打包结算2条)', final_effective_value: '扣 10.0 分 (核减1条)', is_manual_modified: true, value_status: 'MANUAL_MODIFIED', modify_reason_desc: '其中 1 条经复核为标准化专业分包打包结算，符合制度约定，核减 10 分', modified_by_info: '张考核 (07-26 17:05)', support_voucher: 'JS-202607-0092' },
+  { record_id: 'EX-202607-014', biz: '平台子表', target_org_name: '中建八局第四建设有限公司', short_org: '四公司', indicator_name: '结算调差金额规范性', dimension_name: '物资管理-结算管理', system_extracted_value: '扣 5.0 分 (单笔调差)', final_effective_value: '扣 5.0 分 (单笔调差)', is_manual_modified: false, value_status: 'AUTO_CALCULATED', modify_reason_desc: null, modified_by_info: null, support_voucher: null },
+  { record_id: 'EX-202607-015', biz: '平台子表', target_org_name: '中建八局第一建设有限公司', short_org: '一公司', indicator_name: '验收是否合规满足手册标准要求', dimension_name: '物资管理-验收管理', system_extracted_value: '扣 2.0 分 (不合格1条)', final_effective_value: '扣 2.0 分 (不合格1条)', is_manual_modified: false, value_status: 'AUTO_CALCULATED', modify_reason_desc: null, modified_by_info: null, support_voucher: null },
+];
+
+// 二次编辑统计（KPI 卡 2）
+const EXTRACT_EDIT_STATS = {
+  total: EXTRACT_ADJUST_RECORDS.length,
+  modified: EXTRACT_ADJUST_RECORDS.filter(r => r.is_manual_modified).length,
+  autoOnly: EXTRACT_ADJUST_RECORDS.filter(r => !r.is_manual_modified).length,
+};
+
+// ------------------------------------------------------------
+// 4. 局考穿透追溯：局考扣分三级归属切片（passthrough_slices）
+// 二级单位零操作，不生成三级总分，不影响二级得分与排名
+// ------------------------------------------------------------
+const PASSTHROUGH_SLICES = {
+  '一公司': [
+    { indicator_name: '验收合规性', total_deduct: -1.0, tertiary_org_name: '济南分公司', slice_type: '直接归属', slice_score: -1.0, contribution_rate: null, project_name: '济南经十路商业综合体', voucher_no: 'YS-202607-8821', reason: '四方验收单缺少监理工程师现场签章，货实不符扣1分' },
+    { indicator_name: '物资设备集中采购率', total_deduct: -1.5, tertiary_org_name: '青岛分公司', slice_type: '比率贡献率', slice_score: null, contribution_rate: '62.5%', project_name: '青岛自贸区物流中心', voucher_no: 'CG-202607-0012', reason: '该分公司集采率实际 85.2%（低于本单位 90% 目标值），占全公司集采拖欠缺口的 62.5%' },
+    { indicator_name: '物资设备集中采购率', total_deduct: -1.5, tertiary_org_name: '中原分公司', slice_type: '比率贡献率', slice_score: null, contribution_rate: '37.5%', project_name: '郑州航空港产业园', voucher_no: 'CG-202607-0027', reason: '该分公司集采率实际 87.4%，占全公司集采拖欠缺口的 37.5%' },
+    { indicator_name: '数据治理', total_deduct: -0.2, tertiary_org_name: '二级本部', slice_type: '二级本部', slice_score: -0.2, contribution_rate: null, project_name: '—', voucher_no: '—', reason: '异常结算单占比排名扣减，无法归属至具体三级单位，由二级本部承担' },
+  ],
+  '二公司': [
+    { indicator_name: '合规管理', total_deduct: -0.5, tertiary_org_name: '广西分公司', slice_type: '直接归属', slice_score: -0.5, contribution_rate: null, project_name: '南宁东盟商务区超高层', voucher_no: 'HG-202607-NN03', reason: '一标一检系统排查发现无计划先招标进场违规 1 起，扣 0.5 分' },
+    { indicator_name: '验收合规性', total_deduct: -1.0, tertiary_org_name: '山东分公司', slice_type: '直接归属', slice_score: -1.0, contribution_rate: null, project_name: '青岛胶东国际机场货运区工程', voucher_no: 'YS-202607-QD082', reason: '送货单缺少监理方四方联合签证盖章，扣1分' },
+  ],
+  '三公司': [
+    { indicator_name: '结算办理率(子表折算)', total_deduct: -0.6, tertiary_org_name: '南京分公司', slice_type: '直接归属', slice_score: -0.6, contribution_rate: null, project_name: '南京江北新区科创园', voucher_no: 'JS-202607-0092', reason: '打包结算单据异常 1 条，子表扣10分折合主业0.6分' },
+    { indicator_name: '资源管理', total_deduct: -0.5, tertiary_org_name: '安徽分公司', slice_type: '直接归属', slice_score: -0.5, contribution_rate: null, project_name: '合肥科技园二期', voucher_no: 'TS-202607-0044', reason: '云筑网物资租赁类投诉逾期未办结 10 笔，扣0.5分' },
+  ],
+};
+
+// 无显式切片的单位：按"二级本部"归因兜底（保证弹窗可用且业务可解释）
+function buildPassthroughFor(unitName) {
+  if (PASSTHROUGH_SLICES[unitName]) return PASSTHROUGH_SLICES[unitName];
+  const list = (SCORE_DATASETS['202607'] || {})['主业'] || [];
+  const unit = list.find(u => u.unit === unitName);
+  if (!unit) return [];
+  const deducted = unit.details.filter(d => d.actualScore < d.fullScore);
+  if (!deducted.length) return [];
+  return deducted.map(d => ({
+    indicator_name: d.indicator,
+    total_deduct: -(Math.round((d.fullScore - d.actualScore) * 100) / 100),
+    tertiary_org_name: '二级本部',
+    slice_type: '二级本部',
+    slice_score: -(Math.round((d.fullScore - d.actualScore) * 100) / 100),
+    contribution_rate: null,
+    project_name: '—',
+    voucher_no: '—',
+    reason: '该项扣分为比率类/排名类综合扣减，无法直接归属至单一三级单位，暂由二级本部承担',
+    rectify_guidance: (typeof RECTIFY_GUIDE_MAP !== 'undefined' && RECTIFY_GUIDE_MAP[d.indicator]) || '请对照扣分事实完成整改并在次月报送整改结果',
+  }));
+}
+
+// ------------------------------------------------------------
+// 5. 二级自主考评：二级自主考评三级（自治空间数据）
+// ------------------------------------------------------------
+// 5.1 自主考评模板指标配置（默认继承局考核规则，二级可自主调整）
+const LINE2_RULE_CONFIG = [
+  { is_enabled: true,  category: '目标引领',   indicator_name: '物资设备集中采购率', score_weight: 15, period: '每月',            default_threshold: '≥92%',  has_custom_threshold: true,  data_type: 'A类·平台自动切片' },
+  { is_enabled: true,  category: '目标引领',   indicator_name: '分包工程集中采购率', score_weight: 10, period: '季度(3,6,9,12月)', default_threshold: '≥25%',  has_custom_threshold: true,  data_type: 'A类·平台自动切片' },
+  { is_enabled: true,  category: '目标引领',   indicator_name: '采购计划执行率',     score_weight: 10, period: '每月',            default_threshold: '≥95%',  has_custom_threshold: false, data_type: 'A类·平台自动切片' },
+  { is_enabled: true,  category: '目标引领',   indicator_name: '平均采购时长',       score_weight: 5,  period: '每月',            default_threshold: '≤32天', has_custom_threshold: false, data_type: 'A类·平台自动切片' },
+  { is_enabled: true,  category: '平台应用',   indicator_name: '平台子表穿透折算',   score_weight: 25, period: '每月',            default_threshold: '一次核查穿透', has_custom_threshold: false, data_type: 'A类·平台自动切片' },
+  { is_enabled: true,  category: '数据治理',   indicator_name: '异常结算单占比排名', score_weight: 10, period: '每月',            default_threshold: '二级内部排名', has_custom_threshold: false, data_type: 'A类·平台自动切片' },
+  { is_enabled: true,  category: '验收合规性', indicator_name: '验收合规性抽查',     score_weight: 10, period: '每月',            default_threshold: '扣1分/条', has_custom_threshold: false, data_type: 'B类·三级报送核验' },
+  { is_enabled: true,  category: '合规管理',   indicator_name: '采购合规事件',       score_weight: 10, period: '每月',            default_threshold: '0扣分',  has_custom_threshold: false, data_type: 'B类·三级报送核验' },
+  { is_enabled: false, category: '资源管理',   indicator_name: '分供商履约与评价',   score_weight: 5,  period: '每月',            default_threshold: '评价完成率100%', has_custom_threshold: false, data_type: 'B类·三级报送核验' },
+];
+
+// 5.2 三级差异化目标配置（二级向三级下达）
+const LINE2_THRESHOLDS = [
+  { tertiary_code: '8B-1C-01', tertiary_name: '中建八局第一建设有限公司济南分公司', business_type: '主业（继承）', target_value: '92%', remark: '济南区域集采资源集中度较高，适度上调' },
+  { tertiary_code: '8B-1C-02', tertiary_name: '中建八局第一建设有限公司青岛分公司', business_type: '主业（继承）', target_value: '90%', remark: '按局默认值执行' },
+  { tertiary_code: '8B-1C-03', tertiary_name: '中建八局第一建设有限公司中原分公司', business_type: '主业（继承）', target_value: '88%', remark: '区域供应商资源有限，下调2个百分点' },
+  { tertiary_code: '8B-1C-04', tertiary_name: '中建八局第一建设有限公司华东分公司', business_type: '主业（继承）', target_value: '93%', remark: '华东区域集采覆盖率高' },
+  { tertiary_code: '8B-1C-05', tertiary_name: '中建八局第一建设有限公司华南分公司', business_type: '主业（继承）', target_value: '90%', remark: '按局默认值执行' },
+];
+
+// 5.3 三级自主考评成绩与排名
+function buildLine2Scores() {
+  const names = ['青岛分公司','济南分公司','华东分公司','华南分公司','华中分公司','中原分公司','西北分公司','西南分公司','华北分公司','东北分公司','基础设施分公司','安装分公司','装饰分公司'];
+  const base = [93.5, 88.0, 91.2, 89.6, 90.4, 86.4, 84.8, 87.5, 82.3, 80.6, 85.1, 83.2, 78.4];
+  return names.map((n, i) => {
+    const full = 100;
+    const total = base[i];
+    const details = [
+      { indicator: '物资设备集中采购率', score: 15, actual: Math.round((total / 100 * 15) * 10) / 10, value: (88 + (i % 5)) + '.5%', standard: '≥92%(差异化)' },
+      { indicator: '分包工程集中采购率', score: 10, actual: i % 3 === 0 ? 10 : 9.5, value: (25 + (i % 4)) + '.4%', standard: '≥25%' },
+      { indicator: '采购计划执行率',     score: 10, actual: i % 4 === 0 ? 9.5 : 10, value: (94 + (i % 3)) + '.5%', standard: '≥95%' },
+      { indicator: '平均采购时长',       score: 5,  actual: 5, value: (29 + (i % 4)) + '.2天', standard: '≤32天' },
+      { indicator: '平台子表穿透折算',   score: 25, actual: Math.round((23 + (i % 3)) * 10) / 10, value: '子表' + (90 + (i % 6)) + '分', standard: '一次核查穿透折算' },
+      { indicator: '异常结算单占比排名', score: 10, actual: i % 5 === 0 ? 9 : 10, value: '二级内部第' + (i + 1) + '位', standard: '二级内部排名扣分' },
+      { indicator: '验收合规性抽查',     score: 10, actual: i % 4 === 0 ? 8 : (i % 3 === 0 ? 9 : 10), value: '不合格' + (i % 4) + '条', standard: '扣1分/条' },
+      { indicator: '采购合规事件',       score: 10, actual: i % 6 === 0 ? 9.5 : 10, value: i % 6 === 0 ? '违规1起' : '无违规', standard: '0扣分' },
+      { indicator: '分供商履约与评价',   score: 5,  actual: i % 3 === 0 ? 2.5 : 5, value: i % 3 === 0 ? '评价未完成' : '已完成', standard: '扣0.5分' },
+    ];
+    const sum = Math.round(details.reduce((n, d) => n + d.actual, 0) * 10) / 10;
+    return {
+      parent_l2_name: '一公司',
+      tertiary_org_name: '中建八局第一建设有限公司' + n,
+      short_name: n,
+      total_score: sum,
+      full_score: full,
+      score_rate: (Math.round(sum / full * 1000) / 10) + '%',
+      status: i < 8 ? 'published' : 'draft',
+      details,
+    };
+  }).sort((a, b) => b.total_score - a.total_score).map((u, i) => { u.rank = i + 1; return u; });
+}
+const LINE2_SCORES = buildLine2Scores();
+
+// 5.4 三级 B 类报送核验台
+const LINE2_REPORTING = [
+  { id: 'R2-001', tertiary: '济南分公司', item: '验收合规性佐证材料', submitTime: '2026-07-24 15:20', attachments: 3, status: '待核验',      note: '含四方验收单扫描件 12 份' },
+  { id: 'R2-002', tertiary: '青岛分公司', item: '采购合规自查说明',   submitTime: '2026-07-24 16:05', attachments: 1, status: '待核验',      note: '声明本月无违规进场' },
+  { id: 'R2-003', tertiary: '华东分公司', item: '分供商评价完成证明', submitTime: '2026-07-25 09:40', attachments: 2, status: '已核验',      note: '评价完成率 100%' },
+  { id: 'R2-004', tertiary: '中原分公司', item: '验收合规性佐证材料', submitTime: '2026-07-23 11:10', attachments: 2, status: '驳回',        note: '缺少监理方签章页，需补正后重新提交' },
+  { id: 'R2-005', tertiary: '华南分公司', item: '采购合规自查说明',   submitTime: '2026-07-25 10:30', attachments: 1, status: '待核验',      note: '—' },
+];
+
+// 5.5 检查问题落级分配台
+const LINE2_INSPECTION_ISSUES = [
+  { id: 'IS-001', source: '一标一检',     issue: '违规分包（未招标先进场）', foundAt: '2026-07-18', l3_org: '济南分公司', project_name: '济南经十路商业综合体',     deduct: 0.5, status: '已落级' },
+  { id: 'IS-002', source: '审计巡视',     issue: '合同签订流程记录缺失',     foundAt: '2026-07-20', l3_org: '青岛分公司', project_name: '青岛自贸区物流中心',         deduct: 0.1, status: '已落级' },
+  { id: 'IS-003', source: '专项治理上报', issue: '招投标领域问题漏报',       foundAt: '2026-07-22', l3_org: '未分配',     project_name: '—',                          deduct: 0.5, status: '待落级' },
+  { id: 'IS-004', source: '一标一检',     issue: '围标串标线索（待核实）',   foundAt: '2026-07-24', l3_org: '未分配',     project_name: '—',                          deduct: 0.5, status: '待落级' },
+];
+
+// ------------------------------------------------------------
+// 6. 局考穿透追溯：三级单位局考穿透只读台账（passthrough-detail）
+// ------------------------------------------------------------
+const PASSTHROUGH_DETAIL = {
+  l3_org_name: '中建八局第一建设有限公司济南分公司',
+  parent_l2_name: '一公司',
+  eval_month: '2026年7月',
+  summary: { indicatorCount: 3, totalDeduct: -2.4, projectCount: 4 },
+  rows: [
+    { indicator_name: '验收合规性',   category: '验收合规性', project_name: '济南经十路商业综合体',   voucher_no: 'YS-202607-8821', deduct_score: -1.0, fact_detail: '项目月度混凝土验收单缺少监理方签字（未四方验收），货实不符', channel_source: '平台子表抽查' },
+    { indicator_name: '物资设备集中采购率', category: '目标引领', project_name: '济南高新科技园二期', voucher_no: 'CG-202607-0031', deduct_score: -0.8, fact_detail: '本单位集采率 89.0%（低于 92% 差异化目标值），该分公司贡献缺口 33.4%', channel_source: '平台提取' },
+    { indicator_name: '数据治理',     category: '数据治理',   project_name: '济南中央商务区项目',     voucher_no: 'JS-202607-0116', deduct_score: -0.3, fact_detail: '采购成本降低率异常结算单 2 条（占比超阈值），按排名梯度扣减分摊', channel_source: '平台提取' },
+    { indicator_name: '合规管理',     category: '合规管理',   project_name: '济南经十路商业综合体',   voucher_no: 'HG-202607-JN07', deduct_score: -0.3, fact_detail: '一标一检发现其他违规问题 1 条（台账更新滞后），扣 0.2 分；延期上报分摊 0.1 分', channel_source: '一标一检系统' },
+  ],
+};
+
+// ------------------------------------------------------------
+// 7. 跑批三阶段级联（V3.0）
+// 局考二级算分 → 局考穿透切片自动生成 → 二级自主考评跑批（已启用二级自主考评的单位）
+// ------------------------------------------------------------
+const BATCH_STAGES = [
+  { key: 'stage1', label: '局考二级算分',            status: 'done',    detail: '21家二级单位（主业18/海外1/投资2）按三业态标准表算分完成' },
+  { key: 'stage2', label: '局考穿透切片自动生成',    status: 'done',    detail: '按底层单据与项目归属关系切片至三级单位，二级零操作、得分与排名不受影响' },
+  { key: 'stage3', label: '二级自主考评跑批（已启用单位）', status: 'running', detail: '一公司、二公司等已启用二级自主考评的单位执行三级独立考核跑批' },
+];
+const BATCH_STAGE_BADGE = { done: 'dsc-tag--success', running: 'dsc-tag--info', pending: 'dsc-tag--default' };
+
+// ------------------------------------------------------------
+// 8. 申诉分级（V3.0）
+// 局考穿透追溯：二级单位 → 局总部（局供应链管理部初审 / 部领导裁定）
+// 二级自主考评：三级单位 → 二级单位（二级考核专员初审 / 二级领导裁定），局端仅穿透监管只读
+// ------------------------------------------------------------
+APPEAL_RECORDS.forEach(a => {
+  a.appeal_level = '局考复核申诉(二级→局)';
+  a.applicant = a.unit;
+  a.responsible_l3 = '—';
+  a.voucher_no = '—';
+});
+
+const LINE2_APPEALS = [
+  { id: 'AP-L2-202607-08', month: '2026年7月', appeal_level: '二级自主申诉(三级→二级)', applicant: '中建八局第一建设有限公司济南分公司', unit: '一公司', indicator: '物资设备集中采购率', originalScore: 13.0, originalDeduction: 2.0,
+    reason: '部分钢材采购因业主指定特殊标号未能并入集采，已提报特批非标集采说明，请专员复核核减扣分。', status: '二级专员初审中', submitTime: '2026-07-28 14:30', attachments: 1, responsible_l3: '济南分公司', voucher_no: 'CG-202607-0031',
+    timeline: [
+      { step: '提交申诉', time: '2026-07-28 14:30', operator: '济南分公司-王经理', status: 'done' },
+      { step: '二级考核专员初审', time: '进行中', operator: '一公司-考核专员', status: 'active' },
+      { step: '二级领导裁定', time: '待处理', operator: '一公司-分管领导', status: 'pending' },
+    ]},
+  { id: 'AP-L2-202607-09', month: '2026年7月', appeal_level: '二级自主申诉(三级→二级)', applicant: '中建八局第一建设有限公司青岛分公司', unit: '一公司', indicator: '验收合规性抽查', originalScore: 8.0, originalDeduction: 2.0,
+    reason: '2条不合格验收单系供应商换货单据后附，已补交四方联合验收单扫描件，申请核减。', status: '已裁定（同意核减）', submitTime: '2026-07-29 09:15', attachments: 2, responsible_l3: '青岛分公司', voucher_no: 'YS-202607-QD082',
+    timeline: [
+      { step: '提交申诉', time: '2026-07-29 09:15', operator: '青岛分公司-刘经理', status: 'done' },
+      { step: '二级考核专员初审', time: '2026-07-29 15:00', operator: '一公司-考核专员', status: 'done' },
+      { step: '二级领导裁定', time: '2026-07-30 10:20', operator: '一公司-分管领导', status: 'done', result: '佐证充分，核减1分' },
+    ]},
+  { id: 'AP-L2-202607-10', month: '2026年7月', appeal_level: '二级自主申诉(三级→二级)', applicant: '中建八局第一建设有限公司中原分公司', unit: '一公司', indicator: '物资设备集中采购率', originalScore: 12.0, originalDeduction: 3.0,
+    reason: '中原区域供应商资源有限，申请按区域实际情况下调差异化目标值。', status: '已驳回', submitTime: '2026-07-27 16:40', attachments: 1, responsible_l3: '中原分公司', voucher_no: 'CG-202607-0027',
+    timeline: [
+      { step: '提交申诉', time: '2026-07-27 16:40', operator: '中原分公司-赵经理', status: 'done' },
+      { step: '二级考核专员初审', time: '2026-07-28 10:10', operator: '一公司-考核专员', status: 'done' },
+      { step: '二级领导裁定', time: '2026-07-29 11:30', operator: '一公司-分管领导', status: 'done', result: '目标值已于季度初下达并确认，维持原扣分' },
+    ]},
+];
+
+// ------------------------------------------------------------
+// 9. 报送任务「填报主体层级」（V3.0：二级报送 / 三级报送）
+// ------------------------------------------------------------
+const REPORT_LEVEL_MAP = { 1: '二级报送', 2: '二级报送', 3: '二级报送', 4: '三级报送', 5: '二级报送', 6: '三级报送', 7: '三级报送', 8: '二级报送', 9: '二级报送' };
+REPORTING_TASKS.forEach(t => { t.level = REPORT_LEVEL_MAP[t.id] || '二级报送'; });
+
+// ------------------------------------------------------------
+// 10. 角色与上下文（V3.1：五类角色权责矩阵）
+// ------------------------------------------------------------
+const ROLE_OPTIONS = [
+  '局总部考核专员',
+  '局供应链部领导',
+  '二级考核专员（一公司）',
+  '二级分管领导（一公司）',
+  '三级经办人（济南分公司）',
+];
+const ROLE_PROFILE = {
+  '局总部考核专员': {
+    code: 'ROLE_HQ_SPECIALIST', operator: '张考核', org: '局供应链管理部',
+    scope: '全局 21 家二级单位（主业18/海外1/投资2）',
+    duties: '维护局端标准与指标库；审核平台抽取结果并执行单条二次编辑或批量导入；监控全局跑批；录入局级合规检查扣分事实；局考申诉初审；提请试公示与正式发榜。',
+    home: 'rules-config',
+    caps: { gate1: false, gate2: false, hqFinal: false, l2Final: false, intervention: true, inspection: true, workspace: true, portal: false },
+  },
+  '局供应链部领导': {
+    code: 'ROLE_HQ_LEADER', operator: '李部长', org: '局供应链管理部',
+    scope: '全局审批与终审（双闸口 + 重大申诉裁决）',
+    duties: '闸口一审批试公示；终审裁决二级重大申诉；闸口二签发月度正式通报并授权推送画像；试公示紧急挂起。',
+    home: 'score-ledger',
+    caps: { gate1: true, gate2: true, hqFinal: true, l2Final: false, intervention: false, inspection: false, workspace: true, portal: false },
+  },
+  '二级考核专员（一公司）': {
+    code: 'ROLE_L2_SPECIALIST', operator: '一公司-李雷', org: '中建八局第一建设有限公司',
+    scope: '下属 13 家三级分公司（二级自主考评）',
+    duties: '查阅本单位局考得分与穿透追溯分布；对局考扣分发起申诉；启用并维护自主考评模板；录入二级对三级检查问题；核验三级报送；自主申诉初审；提请二级结果发布。',
+    home: 'tertiary-workspace',
+    caps: { gate1: false, gate2: false, hqFinal: false, l2Final: false, intervention: false, inspection: true, workspace: true, portal: false },
+  },
+  '二级分管领导（一公司）': {
+    code: 'ROLE_L2_LEADER', operator: '一公司-王总', org: '中建八局第一建设有限公司',
+    scope: '本单位自主考评审批与终审',
+    duties: '审批自主考评规则配置与版本发布；终审裁决三级自主考评申诉与特批调整；签发本单位三级自主考评月度成绩与通报。',
+    home: 'tertiary-workspace',
+    caps: { gate1: false, gate2: false, hqFinal: false, l2Final: true, intervention: false, inspection: false, workspace: true, portal: false },
+  },
+  '三级经办人（济南分公司）': {
+    code: 'ROLE_L3_MANAGER', operator: '济南分公司-经办人', org: '中建八局第一建设有限公司济南分公司',
+    scope: '本单位局考穿透追溯台账（只读）+ 报送填报 + 自主考评查分申诉',
+    duties: '查阅本单位关联的《局考穿透追溯台账》；在线提交自主考评 B 类报送数据与佐证；在试公示期内对自主考评扣分发起申诉。',
+    home: 'tertiary-portal',
+    caps: { gate1: false, gate2: false, hqFinal: false, l2Final: false, intervention: false, inspection: false, workspace: false, portal: true },
+  },
+};
+
+// ------------------------------------------------------------
+// 11. 双闸口审批流程（V3.1 核心增量）
+// 闸口一：局领导审批试公示；闸口二：局领导签发正式通报并推送画像
+// ------------------------------------------------------------
+const GATE_FLOW = {
+  current: 'GATE1_PENDING',
+  gate1: {
+    title: '闸口一 · 局考试公示审批',
+    pendingText: '当前 2026年7月 成绩草稿已生成，等待局领导审批发布试公示',
+    approveLabel: '审批通过：发布试公示（3天倒计时）',
+    rejectLabel: '退回重新核对',
+    approvedText: '试公示期运行中（剩余 1 天 16 小时），各二级单位仅可见本公司数据',
+  },
+  gate2: {
+    title: '闸口二 · 正式通报签批',
+    pendingText: '申诉裁决与特批重算已完成，等待局领导正式签发月度通报',
+    approveLabel: '签发正式月度通报并推送画像',
+    approvedText: '正式发榜归档，成绩已推送供应链画像系统',
+  },
+  stages: [
+    { code: 'BATCH_RUNNING', name: '跑批计算中', tag: 'dsc-tag--default' },
+    { code: 'GATE1_PENDING', name: '待局领导审批试公示', tag: 'dsc-tag--warning' },
+    { code: 'TRIAL_PUBLISHED', name: '试公示进行中（3天）', tag: 'dsc-tag--info' },
+    { code: 'GATE2_PENDING', name: '待局领导正式发榜签批', tag: 'dsc-tag--warning' },
+    { code: 'OFFICIALLY_PUBLISHED', name: '正式发榜归档', tag: 'dsc-tag--success' },
+  ],
+};
+
+// ------------------------------------------------------------
+// 12. 合规检查与扣分事实登记台（V3.1 新增输入端）
+// ------------------------------------------------------------
+const INSPECTION_TYPE_RULES = {
+  '一标一检': { step: 0.5, note: '违法分包、围标串标每条扣0.5分；其他违规0.2分' },
+  '各类审计巡视': { step: 0.1, note: '分管领导任期内问题每条扣0.1分' },
+  '无计划先施工进场': { step: 0.5, note: '无计划进场/未招标先进场/未签合同先进场，0.5分/笔，上不封顶（扣至0分为止）' },
+  '专项治理': { step: 0.5, note: '每月15日前上报；延期上报或瞒报漏报扣0.5分/次' },
+  '日常验收合规性抽查': { step: 1.0, note: '当月验收单据全量核查，不合规1条扣1分' },
+};
+
+const INSPECTION_EVENTS = [
+  { event_id: 'EV-202607-001', inspection_type: '一标一检', target_l2_name: '中建八局第一建设有限公司', target_l3_name: '济南分公司', project_name: '济南汉峪金谷产业园二期', voucher_no: 'YBYJ-2026-JN-019', issue_summary: '专业分包招标过程排查发现围标串标迹象单据 1 笔', deduct_points: -0.5, report_file_name: '关于汉峪金谷项目一标一检违规通报.pdf', operator_name: '李专员', occur_time: '2026-07-18 14:30', audit_status: '已生效' },
+  { event_id: 'EV-202607-002', inspection_type: '日常验收合规性抽查', target_l2_name: '中建八局第一建设有限公司', target_l3_name: '济南分公司', project_name: '济南奥体金融中心二期', voucher_no: 'YS-202607-8821', issue_summary: '四方验收单缺少监理工程师现场签章，送货凭据货实不符', deduct_points: -1.0, report_file_name: '7月份智能物管单据抽查不合格清单.pdf', operator_name: '王主管', occur_time: '2026-07-22 10:15', audit_status: '已生效' },
+  { event_id: 'EV-202607-003', inspection_type: '无计划先施工进场', target_l2_name: '中建八局第二建设有限公司', target_l3_name: '广西分公司', project_name: '南宁东盟商务区超高层', voucher_no: 'HG-202607-NN03', issue_summary: '未签合同先进场施工，涉及专业分包 1 笔', deduct_points: -0.5, report_file_name: '二公司广西分公司无计划进场核查通报.pdf', operator_name: '李专员', occur_time: '2026-07-20 09:40', audit_status: '已生效' },
+  { event_id: 'EV-202607-004', inspection_type: '各类审计巡视', target_l2_name: '中建八局第三建设有限公司', target_l3_name: '南京分公司', project_name: '南京江北新区科创园', voucher_no: 'SJ-202607-0054', issue_summary: '审计巡视发现合同签订流程记录缺失 1 条', deduct_points: -0.1, report_file_name: '2026年三季度审计巡视问题清单.pdf', operator_name: '赵主管', occur_time: '2026-07-23 15:10', audit_status: '待复核' },
+  { event_id: 'EV-202607-005', inspection_type: '专项治理', target_l2_name: '中建八局东北公司', target_l3_name: '二级本部', project_name: '—', voucher_no: '—', issue_summary: '工程建设和招投标领域专项治理问题延期 1 天上报', deduct_points: -0.5, report_file_name: '专项治理上报时效核查记录.pdf', operator_name: '李专员', occur_time: '2026-07-16 09:05', audit_status: '已生效' },
+];
+
+// ------------------------------------------------------------
+// 13. 三级单位业务门户：我的报送任务（V3.1 填报源头）
+// ------------------------------------------------------------
+const L3_PORTAL_REPORTS = [
+  { task_id: 'L3R-202607-01', title: '2026年7月重点工作挂图计划进度报送', indicator: '月度重点工作挂图计划', deadline: '2026-07-25 18:00', remain: '剩余 6 小时', status: '待填报', submitted: false },
+  { task_id: 'L3R-202607-02', title: '2026年7月验收合规性佐证材料报送', indicator: '验收合规性（B类）', deadline: '2026-07-25 18:00', remain: '剩余 6 小时', status: '待填报', submitted: false },
+  { task_id: 'L3R-202607-03', title: '2026年7月采购合规自查说明', indicator: '采购合规（B类）', deadline: '2026-07-24 18:00', submit_time: '2026-07-23 16:20', status: '已通过', submitted: true },
+  { task_id: 'L3R-202607-04', title: '2026年7月专项治理问题上报', indicator: '合规管理', deadline: '2026-07-15 18:00', submit_time: '2026-07-16 09:05', status: '已驳回', submitted: true,
+    reject_category: '数据口径不符', reject_comment: '上报口径与制度要求不一致，请按最新模板重新填报并附会签记录', resubmit_deadline: '2026-07-28 18:00' },
+];
+
+// ------------------------------------------------------------
+// 14. V3.1 字段补强
+// ------------------------------------------------------------
+// 14.1 取数方式与编辑权限（V3.1：平台抽取打底 + 考核员二次编辑 / 批量导入覆盖）
+const EDIT_PERMISSION_NOTE = '「平台抽取+考核员编辑」指标支持单条二次编辑与 Excel 批量导入覆盖，系统保留原值比对与修改留痕；「平台全自动抽取」指标不接受人工覆盖。';
+
+// 14.2 局考穿透追溯切片：归属类型命名升级 + 业务整改指引
+const RECTIFY_GUIDE_MAP = {
+  '验收合规性': '请于次月5日前在智能物管模块补齐监理签章凭据',
+  '物资设备集中采购率': '加大下季度钢材招标进场统筹，落实差异化集采指标',
+  '数据治理': '排查异常结算单成因，规范结算单价与成本口径录入',
+  '合规管理': '完善招标前置审批与台账记录，杜绝无计划进场',
+  '结算办理率(子表折算)': '规范打包结算申报，按时完成过程结算单录入',
+  '资源管理': '及时办结云筑网投诉工单，避免逾期未办结',
+};
+Object.keys(PASSTHROUGH_SLICES).forEach(unit => {
+  PASSTHROUGH_SLICES[unit].forEach(s => {
+    if (s.slice_type === '比率贡献率') s.slice_type = '贡献分摊';
+    s.rectify_guidance = RECTIFY_GUIDE_MAP[s.indicator_name] || '请对照扣分事实完成整改并在次月报送整改结果';
+  });
+});
+PASSTHROUGH_DETAIL.rows.forEach(r => {
+  r.rectify_guidance = RECTIFY_GUIDE_MAP[r.indicator_name] || '请对照扣分事实完成整改并在次月报送整改结果';
+});
+
+// 14.3 组织机构树：自主考评状态（V3.1）
+const AUTONOMOUS_DISABLED_CODES = ['8B-OVERSEAS', '8B-WL', '8B-HJKJ'];
+const ORG_SUSPENDED_CODES = ['8B-WL-05'];
+ORG_TREE.children.forEach(u => {
+  u.autonomous_eval_status = AUTONOMOUS_DISABLED_CODES.includes(u.org_code) ? '未启用' : '已启用';
+  u.autonomous_template_version = u.autonomous_eval_status === '已启用' ? (u.org_code === '8B-1C' ? 'V3.1-自主定制版' : 'V3.1-DEFAULT') : null;
+  (u.children || []).forEach(c => {
+    c.autonomous_eval_status = u.autonomous_eval_status;
+    if (ORG_SUSPENDED_CODES.includes(c.org_code)) c.status = 'inactive';
+  });
+});
+
+// 14.4 组织机构统计（自洽计算：正常运行 / 停用挂起）
+const ORG_STATS_EXT = (function () {
+  let normal = 0, suspended = 0;
+  const walk = (n) => {
+    if (n.status === 'active') normal++; else suspended++;
+    (n.children || []).forEach(walk);
+  };
+  walk(ORG_TREE);
+  return { normal: normal, suspended: suspended };
+})();
+
+// 14.5 三级 B 类报送核验台：驳回重报字段（V3.1）
+const LINE2_REJECT_CATEGORIES = ['支撑材料缺失', '数据口径不符', '盖章失效', '填报不实'];
+LINE2_REPORTING.forEach((r, i) => {
+  if (r.status === '驳回') {
+    r.reject_category = '支撑材料缺失';
+    r.reject_comment = '验收佐证缺少监理方签章页，请补正后重新提交';
+    r.resubmit_deadline = '2026-07-28 18:00';
+  }
+  r.report_id = 'RP-202607-' + String(i + 1).padStart(2, '0');
+});
+
+// 14.6 自主考评配置版本与发布审批（V3.1）
+const AUTONOMOUS_VERSION = {
+  version: 'V3.1-自主定制版',
+  base: '基于局 2026年7月标准继承',
+  publishStatus: '待二级分管领导审批',
+  updatedAt: '2026-07-24 17:20',
+  changeLog: '① 物资设备集中采购率权重 15→15（不变）；② 分供商履约与评价 停用；③ 三级差异化阈值：济南 92% / 青岛 90% / 中原 88% / 华东 93%',
+};
