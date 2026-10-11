@@ -1174,6 +1174,9 @@ const ROLE_PROFILE = {
 // 11. 双闸口审批流程（V3.1 核心增量）
 // 闸口一：局领导审批试公示；闸口二：局领导签发正式通报并推送画像
 // ------------------------------------------------------------
+// 试公示倒计时：全局唯一来源（台账闸口卡 / 申诉页横幅 / 三级门户 三处同源，避免文案不一致）
+const TRIAL_COUNTDOWN = { start: '2026-07-28', end: '2026-07-30', text: '1 天 14 小时', deadline: '2026-07-30 18:00' };
+
 const GATE_FLOW = {
   current: 'GATE1_PENDING',
   gate1: {
@@ -1181,7 +1184,7 @@ const GATE_FLOW = {
     pendingText: '当前 2026年7月 成绩草稿已生成，等待局领导审批发布试公示',
     approveLabel: '审批通过：发布试公示（3天倒计时）',
     rejectLabel: '退回重新核对',
-    approvedText: '试公示期运行中（剩余 1 天 16 小时），各二级单位仅可见本公司数据',
+    approvedText: '试公示期运行中（剩余 ' + TRIAL_COUNTDOWN.text + '），各二级单位仅可见本公司数据',
   },
   gate2: {
     title: '闸口二 · 正式通报签批',

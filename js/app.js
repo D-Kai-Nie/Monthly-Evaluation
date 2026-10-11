@@ -16,7 +16,7 @@ const AppState = {
   collectSection: 'extract', // V3.1 数据采集页内分区：extract | inspection | reporting | exception
   // —— V3.0 双线穿透 ——
   currentRole: '局总部考核专员', // V3.1 五类角色，见 ROLE_PROFILE
-  rulesTab: 'org',             // 规则配置Tab：org | indicators | platform-rules | templates
+  rulesTab: 'indicators',      // 规则配置Tab：indicators | platform-rules | templates | org（默认落到高频的指标库）
   appealLine: '局考复核申诉',           // 申诉分级：局考穿透追溯 | 二级自主考评
   workspaceTab: 'rule',        // 工作台Tab：rule | reporting | inspection | board
   portalTab: 'passthrough',    // 三级门户Tab：passthrough | report | score
@@ -76,11 +76,14 @@ function applySidebarScope() {
   document.querySelectorAll('.dsc-sidebar__submenu-item[data-scope]').forEach(it => {
     it.style.display = (it.dataset.scope === (isL3 ? 'l3' : 'hq')) ? '' : 'none';
   });
+  // 权限收敛空态提示：三级角色仅剩「三级业务门户」一项，明确告知避免误判为系统异常
+  const hint = document.getElementById('scopeHint');
+  if (hint) hint.style.display = isL3 ? '' : 'none';
 }
 
 function navigateTo(page) {
   AppState.currentPage = page;
-  
+
   // 更新侧边栏激活状态（一级菜单 + 子菜单）
   document.querySelectorAll('.dsc-sidebar__menu-item[data-page], .dsc-sidebar__submenu-item[data-page]').forEach(item => {
     const activeClass = item.classList.contains('dsc-sidebar__submenu-item')
@@ -88,19 +91,22 @@ function navigateTo(page) {
       : 'dsc-sidebar__menu-item--active';
     item.classList.toggle(activeClass, item.dataset.page === page);
   });
-  
+
   // 更新面包屑
   updateBreadcrumb(page);
-  
+
   // 渲染页面内容
   renderPage(page);
+
+  // 页面写回地址栏：刷新/分享可回到当前页（file:// 下 replaceState 可能受限，静默降级）
+  try { history.replaceState(null, '', '#/' + page); } catch (e) { /* no-op */ }
 }
 
 function updateBreadcrumb(page) {
   const pageNames = {
     'rules-config': '考核规则配置',
     'data-collection': '数据采集与编辑',
-    'score-ledger': '月度自动跑批与打分台账',
+    'score-ledger': '月度跑批与打分台账',
     'appeal-approval': '申诉审批与纠正',
     'tertiary-workspace': '二级考核专员工作台',
     'tertiary-portal': '三级业务门户（济南分公司）',
@@ -176,7 +182,8 @@ const ORG_CARET_DOWN = '<svg viewBox="0 0 16 16" width="11" height="11" fill="no
 const ORG_CARET_RIGHT = '<svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>';
 
 function orgBizTag(b) {
-  return b === '主业' ? 'dsc-tag--info' : b === '海外' ? 'dsc-tag--success' : b === '投资' ? 'dsc-tag--warning' : 'dsc-tag--default';
+  // 业态为中性分类信息，统一使用描边标签；彩色语义只留给状态与风险
+  return (b === '主业' || b === '海外' || b === '投资') ? 'dsc-tag--outline' : 'dsc-tag--default';
 }
 function orgLevelTag(l) {
   return l === '局' ? 'dsc-tag--danger' : l === '二级单位' ? 'dsc-tag--info' : 'dsc-tag--default';
@@ -374,8 +381,7 @@ function renderRulesConfigPage() {
     <div class="dsc-page-header">
       <h1 class="dsc-page-header__title">考核规则配置</h1>
       <div class="dsc-page-header__actions">
-        <button class="dsc-btn dsc-btn--primary" onclick="openRuleModal()">+ 新增考核规则</button>
-        <button class="dsc-btn dsc-btn--default">导出配置</button>
+        <button class="dsc-btn dsc-btn--default" onclick="exportConfig(this)"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="dsc-icon-inline"><path d="M8 1.5V11M4.5 7.5L8 11l3.5-3.5"/><path d="M2 13.5h12"/></svg>导出配置</button>
       </div>
     </div>
 
@@ -418,10 +424,10 @@ function renderRulesConfigPage() {
     <div class="dsc-card">
       <div class="dsc-card__header" style="border-bottom:none;padding-bottom:0;">
         <div class="dsc-tabs" id="ruleTabs">
-          <div class="dsc-tabs__item ${AppState.rulesTab === 'org' ? 'dsc-tabs__item--active' : ''}" data-tab="org">组织机构树（${ORG_STATS.l2}家二级/${ORG_STATS.l3}家三级）</div>
           <div class="dsc-tabs__item ${AppState.rulesTab === 'indicators' ? 'dsc-tabs__item--active' : ''}" data-tab="indicators">指标库管理（三业态33项）</div>
           <div class="dsc-tabs__item ${AppState.rulesTab === 'platform-rules' ? 'dsc-tabs__item--active' : ''}" data-tab="platform-rules">平台应用考核规则</div>
           <div class="dsc-tabs__item ${AppState.rulesTab === 'templates' ? 'dsc-tabs__item--active' : ''}" data-tab="templates">计分模板配置</div>
+          <div class="dsc-tabs__item ${AppState.rulesTab === 'org' ? 'dsc-tabs__item--active' : ''}" data-tab="org">组织机构树（${ORG_STATS.l2}家二级/${ORG_STATS.l3}家三级）</div>
         </div>
       </div>
       <div class="dsc-card__body">
@@ -432,9 +438,13 @@ function renderRulesConfigPage() {
         <!-- 指标库管理 -->
         <div id="tab-indicators" class="tab-content" style="${AppState.rulesTab === 'indicators' ? '' : 'display:none;'}">
           <div class="dsc-alert dsc-alert--info dsc-mb-md">
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" class="dsc-icon-inline"><circle cx="8" cy="8" r="6"/><path d="M8 7v4M8 5v.2"/></svg>三业态独立考核标准表（2026年7月修订版）：${BIZ_TOTALS.map(b => `<strong>${b.biz}</strong>&nbsp;${b.count}项 / 总分${b.total}分`).join('<span style="margin:0 12px;color:var(--color-border);">|</span>')}<span style="margin-left:12px;">类别分值合计已校验</span><br/><span class="dsc-font-sm dsc-text-tertiary">色彩图例：<span class="dsc-tag dsc-tag--info dsc-tag--sm">主业</span> <span class="dsc-tag dsc-tag--success dsc-tag--sm">海外</span> <span class="dsc-tag dsc-tag--warning dsc-tag--sm">投资</span> 表示业态；<span class="dsc-tag dsc-tag--outline dsc-tag--sm">描边标签</span> 表示类别 / 来源等中性分类（不承载状态语义）</span>
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" class="dsc-icon-inline"><circle cx="8" cy="8" r="6"/><path d="M8 7v4M8 5v.2"/></svg>三业态独立考核标准表（2026年7月修订版）：${BIZ_TOTALS.map(b => `<strong>${b.biz}</strong>&nbsp;${b.count}项 / 总分${b.total}分`).join('<span style="margin:0 12px;color:var(--color-border);">|</span>')}<span style="margin-left:12px;">类别分值合计已校验</span><br/><span class="dsc-font-sm dsc-text-tertiary">标签说明：<span class="dsc-tag dsc-tag--outline dsc-tag--sm">描边标签</span> 表示类别 / 来源 / 业态等中性分类（不承载状态语义）；成功 / 警告 / 风险色仅用于状态与风险提示</span>
           </div>
           <div class="dsc-filter-bar" style="box-shadow:none;padding:0 0 var(--space-lg) 0;">
+            <div class="dsc-filter-bar__item">
+              <span class="dsc-filter-bar__label">指标名称：</span>
+              <input class="dsc-input" id="filterKeyword" style="width:180px;" placeholder="指标名称 / 类别关键词" oninput="applyIndicatorFilters()" />
+            </div>
             <div class="dsc-filter-bar__item">
               <span class="dsc-filter-bar__label">适用业态：</span>
               <select class="dsc-select" id="filterBusiness">
@@ -457,6 +467,7 @@ function renderRulesConfigPage() {
             </div>
             <button class="dsc-btn dsc-btn--primary dsc-btn--sm" onclick="applyIndicatorFilters()">查询</button>
             <button class="dsc-btn dsc-btn--default dsc-btn--sm" onclick="resetIndicatorFilters()">重置</button>
+            <button class="dsc-btn dsc-btn--primary dsc-btn--sm" style="margin-left:auto;" onclick="openRuleModal()">+ 新增考核规则</button>
           </div>
           <div class="dsc-table-wrapper">
             <table class="dsc-table">
@@ -705,7 +716,7 @@ function renderScoringTemplateForm() {
                     <td class="dsc-font-sm">${r.note}</td>
                     <td class="dsc-table__actions">
                       <button class="dsc-btn dsc-btn--text dsc-btn--sm" onclick="openThresholdModal('${g.indicator}')">编辑</button>
-                      <button class="dsc-btn dsc-btn--text dsc-btn--sm dsc-text-danger">删除</button>
+                      <button class="dsc-btn dsc-btn--text dsc-btn--sm dsc-text-danger" onclick="deleteThreshold('${g.indicator}','${r.unit}')">删除</button>
                     </td>
                   </tr>`).join('')}
               </tbody>
@@ -716,8 +727,8 @@ function renderScoringTemplateForm() {
       </div>
     </div>
     <div class="dsc-flex dsc-flex--center" style="gap:var(--space-md);margin-top:var(--space-lg);">
-      <button class="dsc-btn dsc-btn--primary">保存配置</button>
-      <button class="dsc-btn dsc-btn--default">重置</button>
+      <button class="dsc-btn dsc-btn--primary" onclick="saveTemplateConfig(this)">保存配置</button>
+      <button class="dsc-btn dsc-btn--default" onclick="resetTemplateConfig()">重置</button>
     </div>
   `;
 }
@@ -748,27 +759,68 @@ function openThresholdModal(indicator) {
   };
 }
 
-// 指标库组合筛选（业态 + 类别 + 周期）
+// 导出规则配置（覆盖三业态标准表 + 平台子表 + 计分模板）
+function exportConfig(btn) {
+  setBtnLoading(btn, '导出中…', 1500, function () {
+    showToast('考核规则配置已导出（三业态标准表 33 项 + 平台子表 13 项 + 计分模板与差异化阈值）', 'success');
+  });
+}
+
+// 计分模板保存 / 重置 / 阈值删除（补齐反馈闭环）
+function saveTemplateConfig(btn) {
+  setBtnLoading(btn, '保存中…', 1200, function () {
+    showToast('计分模板配置已保存：五类算法参数、动态满分规则与单位差异化阈值已生效', 'success');
+  });
+}
+
+function resetTemplateConfig() {
+  openModal('重置计分模板配置', `
+    <div class="dsc-alert dsc-alert--warning">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="dsc-icon-inline"><path d="M8 1.5L15 14H1z"/><path d="M8 6v3.2M8 11.6v.2" stroke-linecap="round"/></svg>将丢弃本次未保存的计分模板修改，恢复为系统默认参数（五类算法模板与动态满分规则不受历史月份影响）。
+    </div>
+  `, true);
+  document.getElementById('modalConfirm').onclick = function () {
+    closeModal();
+    showToast('已重置为系统默认模板参数（未保存的修改已丢弃）', 'warning');
+  };
+}
+
+function deleteThreshold(indicator, unit) {
+  openModal('删除差异化阈值', `
+    <div class="dsc-alert dsc-alert--warning">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="dsc-icon-inline"><path d="M8 1.5L15 14H1z"/><path d="M8 6v3.2M8 11.6v.2" stroke-linecap="round"/></svg>确定删除「${indicator} — ${unit}」的差异化目标值？删除后该单位将采用默认目标值参与跑批。
+    </div>
+  `, true);
+  document.getElementById('modalConfirm').onclick = function () {
+    closeModal();
+    showToast(`已删除「${unit}」在「${indicator}」下的差异化阈值，跑批将采用默认目标值`, 'success');
+  };
+}
+
+// 指标库组合筛选（关键词 + 业态 + 类别 + 周期）
 function applyIndicatorFilters() {
+  const kw = ((document.getElementById('filterKeyword') || {}).value || '').trim();
   const biz = (document.getElementById('filterBusiness') || {}).value || '';
   const cat = (document.getElementById('filterCategory') || {}).value || '';
   const period = (document.getElementById('filterPeriod') || {}).value || '';
   document.querySelectorAll('#tab-indicators tbody tr').forEach(row => {
     const tds = row.querySelectorAll('td');
     if (tds.length < 5) return;
+    const nameText = tds[2].textContent;
     const bizText = tds[3].textContent;
     const catText = tds[1].textContent;
     const periodText = tds[5].textContent;
+    const matchKw = !kw || nameText.includes(kw) || catText.includes(kw);
     const matchBiz = !biz || bizText.includes(biz);
     const matchCat = !cat || catText === cat;
     const matchPeriod = !period || periodText.includes(period);
-    row.style.display = (matchBiz && matchCat && matchPeriod) ? '' : 'none';
+    row.style.display = (matchKw && matchBiz && matchCat && matchPeriod) ? '' : 'none';
   });
   updateEmptyRow(document.querySelector('#tab-indicators tbody'));
 }
 
 function resetIndicatorFilters() {
-  ['filterBusiness', 'filterCategory', 'filterPeriod'].forEach(id => {
+  ['filterKeyword', 'filterBusiness', 'filterCategory', 'filterPeriod'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -845,7 +897,7 @@ function renderDataCollectionPage() {
         <div class="dsc-stat-card__label">考核员二次编辑覆盖笔数</div>
         <div class="dsc-stat-card__value dsc-stat-card__value--primary">${EXTRACT_EDIT_STATS.modified}</div>
         <div class="dsc-stat-card__footer">共 ${EXTRACT_EDIT_STATS.total} 条抽取记录，其中 ${EXTRACT_EDIT_STATS.autoOnly} 条由系统自动计算
-          <button class="dsc-btn dsc-btn--text dsc-btn--sm dsc-text-primary" onclick="openBatchImportModal()">[批量导入数据]</button>
+          <button class="dsc-btn dsc-btn--text dsc-btn--sm dsc-text-primary" onclick="event.stopPropagation(); openBatchImportModal()">[批量导入数据]</button>
         </div>
       </div>
       <div class="dsc-stat-card" style="cursor:pointer;" title="点击查看合规检查登记台" onclick="switchCollectSection('inspection')">
@@ -955,7 +1007,7 @@ function renderDataCollectionPage() {
         <span class="dsc-card__title">报送管理（截止日提醒与逾期标记 · 含三级下沉报送）</span>
         <div class="dsc-flex dsc-gap-sm">
           <select class="dsc-select" id="reportStatusFilter" style="width:130px;"><option value="">全部状态</option><option>按时报送</option><option>逾期</option><option>待报送</option></select>
-          <button class="dsc-btn dsc-btn--default dsc-btn--sm">批量催报</button>
+          <button class="dsc-btn dsc-btn--default dsc-btn--sm" onclick="remindAllOverdue(this)">批量催报</button>
         </div>
       </div>
       <div class="dsc-card__body--no-padding">
@@ -1031,7 +1083,7 @@ function renderDataCollectionPage() {
     <div class="dsc-card" data-collect-sec="exception">
       <div class="dsc-card__header">
         <span class="dsc-card__title">异常数据拦截队列 <span class="dsc-tag dsc-tag--warning" style="margin-left:8px;">${EXCEPTION_RECORDS.filter(e=>e.status==='pending').length}条待处理</span></span>
-        <button class="dsc-btn dsc-btn--default dsc-btn--sm">批量标记处理</button>
+        <button class="dsc-btn dsc-btn--default dsc-btn--sm" onclick="batchHandleExceptions(this)">批量标记处理</button>
       </div>
       <div class="dsc-card__body--no-padding">
         <div class="dsc-table-wrapper">
@@ -1058,8 +1110,8 @@ function renderDataCollectionPage() {
                     <td><span class="dsc-tag ${sTag}">${sText}</span></td>
                     <td>${e.handler || '—'}</td>
                     <td class="dsc-table__actions">
-                      <button class="dsc-btn dsc-btn--text dsc-btn--sm">处理</button>
-                      <button class="dsc-btn dsc-btn--text dsc-btn--sm">忽略</button>
+                      <button class="dsc-btn dsc-btn--text dsc-btn--sm" onclick="handleException(${e.id}, 'process')">处理</button>
+                      <button class="dsc-btn dsc-btn--text dsc-btn--sm" onclick="handleException(${e.id}, 'ignore')">忽略</button>
                     </td>
                   </tr>
                 `;
@@ -1169,8 +1221,8 @@ function openSingleEditModal(recordId) {
   document.getElementById('modalConfirm').onclick = function () {
     const val = (document.getElementById('seNewValue') || {}).value || '';
     const reason = (document.getElementById('seReason') || {}).value || '';
-    if (!val.trim()) { showToast('「调整后最终生效值」为必填项', 'warning'); return; }
-    if (reason.trim().length < 10) { showToast('「调整依据与说明」为必填项，且不少于 10 个字', 'warning'); return; }
+    if (!val.trim()) { flagFieldError(document.getElementById('seNewValue')); showToast('「调整后最终生效值」为必填项', 'warning'); return; }
+    if (reason.trim().length < 10) { flagFieldError(document.getElementById('seReason')); showToast('「调整依据与说明」为必填项，且不少于 10 个字', 'warning'); return; }
     r.final_effective_value = val.trim();
     r.modify_reason_desc = reason.trim();
     r.is_manual_modified = true;
@@ -1329,8 +1381,8 @@ function openInspectionEventModal() {
   document.getElementById('modalConfirm').onclick = function () {
     const project = (document.getElementById('ieProject') || {}).value || '';
     const summary = (document.getElementById('ieSummary') || {}).value || '';
-    if (project.trim().length < 4) { showToast('「涉事工程项目」为必填项，且不少于 4 个汉字', 'warning'); return; }
-    if (summary.trim().length < 15) { showToast('「违规违纪事实摘要」为必填项，且不少于 15 字', 'warning'); return; }
+    if (project.trim().length < 4) { flagFieldError(document.getElementById('ieProject')); showToast('「涉事工程项目」为必填项，且不少于 4 个汉字', 'warning'); return; }
+    if (summary.trim().length < 15) { flagFieldError(document.getElementById('ieSummary')); showToast('「违规违纪事实摘要」为必填项，且不少于 15 字', 'warning'); return; }
     closeModal();
     showToast('检查扣分事实已登记并进入审批流，生效后将同步计入局考二级扣分与局考穿透切片', 'success');
   };
@@ -1421,6 +1473,48 @@ function remindReport(id) {
   const t = REPORTING_TASKS.find(x => x.id === Number(id));
   if (!t) return;
   showToast(`已向「${t.unit}」发送「${t.item}」催报提醒`, 'success');
+}
+
+// 批量催报（覆盖全部逾期与待报送单位）
+function remindAllOverdue(btn) {
+  const targets = REPORTING_TASKS.filter(t => t.status === 'overdue' || t.status === 'pending');
+  if (!targets.length) { showToast('当前没有逾期或待报送的报送任务', 'info'); return; }
+  setBtnLoading(btn, '发送中…', 1000, function () {
+    showToast(`已向 ${targets.length} 家单位批量发送催报提醒（逾期 ${targets.filter(t => t.status === 'overdue').length} 项 · 待报送 ${targets.filter(t => t.status === 'pending').length} 项）`, 'success');
+  });
+}
+
+// 异常队列：批量标记处理 / 单行处理 / 单行忽略（数据回写 + 页面刷新，形成行为闭环）
+function rerenderDataCollection() {
+  const container = document.getElementById('pageContainer');
+  container.innerHTML = renderDataCollectionPage();
+  initDataCollectionPage();
+}
+
+function batchHandleExceptions(btn) {
+  const pend = EXCEPTION_RECORDS.filter(e => e.status === 'pending');
+  if (!pend.length) { showToast('当前没有待处理的异常记录', 'info'); return; }
+  setBtnLoading(btn, '处理中…', 900, function () {
+    pend.forEach(e => { e.status = 'processing'; e.handler = e.handler && e.handler !== '-' ? e.handler : '张考核'; });
+    showToast(`已将 ${pend.length} 条异常批量标记为「处理中」并分派处理人`, 'success');
+    rerenderDataCollection();
+  });
+}
+
+function handleException(exId, action) {
+  const e = EXCEPTION_RECORDS.find(x => x.id === Number(exId));
+  if (!e) { showToast('未找到该异常记录', 'warning'); return; }
+  if (action === 'process') {
+    e.status = 'processing';
+    e.handler = '张考核';
+    showToast(`异常 EX-${e.id}（${e.unit} · ${e.indicator}）已转交处理，处理结果将回写底表`, 'info');
+  } else {
+    e.status = 'resolved';
+    e.handler = '张考核';
+    e.desc = e.desc + '（已忽略：不参与本月算分）';
+    showToast(`异常 EX-${e.id} 已忽略，本月不参与算分`, 'warning');
+  }
+  rerenderDataCollection();
 }
 
 function viewReportDetail(id) {
@@ -1569,7 +1663,8 @@ function runCollectTask(id, type) {
 // ============================================================
 // 页面3: 月度自动跑批与打分台账
 // ============================================================
-const SCORE_BOARD_BIZ_TAG = { '主业': 'dsc-tag--info', '海外': 'dsc-tag--success', '投资': 'dsc-tag--warning' };
+// 业态标签全部采用中性描边样式（状态色仅用于状态/风险提示，避免"海外=绿、投资=橙"的语义误导）
+const SCORE_BOARD_BIZ_TAG = { '主业': 'dsc-tag--outline', '海外': 'dsc-tag--outline', '投资': 'dsc-tag--outline' };
 
 function scoreColorOf(rate) {
   const r = parseFloat(rate);
@@ -1606,7 +1701,7 @@ function renderGateBanner() {
          </span>` : noPerm;
   } else if (cur === 'TRIAL_PUBLISHED') {
     actionHtml = `<span class="dsc-flex dsc-gap-sm dsc-shrink-0">
-        <button class="dsc-btn dsc-btn--default dsc-btn--sm" onclick="approveGate('gate1', false)">试点期间紧急挂起</button>
+        <button class="dsc-btn dsc-btn--danger dsc-btn--sm" onclick="confirmSuspend()">试点期间紧急挂起</button>
         <button class="dsc-btn dsc-btn--primary dsc-btn--sm" onclick="advanceToGate2()">试公示结束 · 提请正式发布</button>
       </span>`;
   } else if (cur === 'GATE2_PENDING') {
@@ -1668,6 +1763,19 @@ function advanceToGate2() {
   rerenderScoreLedger();
 }
 
+// 紧急挂起为不可逆的公示中断动作，统一走二次确认
+function confirmSuspend() {
+  openModal('紧急挂起试公示', `
+    <div class="dsc-alert dsc-alert--warning">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="dsc-icon-inline"><path d="M8 1.5L15 14H1z"/><path d="M8 6v3.2M8 11.6v.2" stroke-linecap="round"/></svg>将立即暂停试公示倒计时、关闭申诉通道，并要求重新核对底表与算分结果。挂起期间二级单位不可见成绩，需重新走闸口一审批。
+    </div>
+  `, true);
+  document.getElementById('modalConfirm').onclick = function () {
+    closeModal();
+    approveGate('gate1', false);
+  };
+}
+
 function renderScoreLedgerPage() {
   const month = AppState.scoreMonth || '202607';
   const biz = AppState.scoreBiz || '全局';
@@ -1707,7 +1815,7 @@ function renderScoreLedgerPage() {
               <td><strong>${u.globalRank}</strong></td>
               <td><span class="dsc-tag ${SCORE_BOARD_BIZ_TAG[u.biz] || 'dsc-tag--default'}">${u.biz}</span></td>
               <td><strong>${u.unit}</strong></td>
-              <td class="dsc-table__num"><span class="dsc-score__value" style="font-size:20px;color:${scoreColorOf(u.scoreRate)}">${u.totalScore}</span></td>
+              <td class="dsc-table__num"><span class="dsc-score__value" style="font-size:16px;color:${scoreColorOf(u.scoreRate)}">${u.totalScore}</span></td>
               <td class="dsc-table__num">${u.totalFullScore}</td>
               <td class="dsc-table__num"><strong>${u.scoreRate}</strong></td>
               <td style="width:130px;"><div class="dsc-progress"><div class="dsc-progress__bar ${scoreBarClassOf(u.scoreRate)}" style="width:${parseFloat(u.scoreRate)}%"></div></div></td>
@@ -1732,7 +1840,7 @@ function renderScoreLedgerPage() {
             <tr>
               <td><strong>${u.rank}</strong></td>
               <td><strong>${u.unit}</strong></td>
-              <td class="dsc-table__num"><span class="dsc-score__value" style="font-size:20px;color:${scoreColorOf(u.scoreRate)}">${u.totalScore}</span></td>
+              <td class="dsc-table__num"><span class="dsc-score__value" style="font-size:16px;color:${scoreColorOf(u.scoreRate)}">${u.totalScore}</span></td>
               <td class="dsc-table__num">${u.totalFullScore}</td>
               <td class="dsc-table__num"><strong>${u.scoreRate}</strong></td>
               <td style="width:130px;"><div class="dsc-progress"><div class="dsc-progress__bar ${scoreBarClassOf(u.scoreRate)}" style="width:${parseFloat(u.scoreRate)}%"></div></div></td>
@@ -1750,7 +1858,7 @@ function renderScoreLedgerPage() {
 
   return `
     <div class="dsc-page-header">
-      <h1 class="dsc-page-header__title">月度自动跑批与打分台账</h1>
+      <h1 class="dsc-page-header__title">月度跑批与打分台账</h1>
       <div class="dsc-page-header__actions">
         <select class="dsc-select" id="monthFilter" style="width:175px;">
           <option value="202607" ${month === '202607' ? 'selected' : ''}>2026年7月（新标准）</option>
@@ -1767,6 +1875,22 @@ function renderScoreLedgerPage() {
       ${isNewStd
         ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" class="dsc-icon-inline"><circle cx="8" cy="8" r="6"/><path d="M8 7v4M8 5v.2"/></svg>自<strong>2026年7月</strong>起适用新标准：三业态独立考核标准表（主业84分 / 海外100分 / 投资100分），按月动态满分计分；平台应用按子表100分制×0.06折算；资源白名单年末考核。1—6月旧数据不追溯重算。'
         : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" class="dsc-icon-inline"><circle cx="8" cy="8" r="6"/><path d="M8 7v4M8 5v.2"/></svg>2026年6月及以前按6月前旧标准执行（主业满分68分/月）；<strong>自2026年7月起适用新标准</strong>（主业84分 / 海外100分 / 投资100分，动态满分按月计算）。1—6月历史数据不追溯重算。'}
+    </div>
+
+    <!-- 排名看板（核心资产置顶：先看结果，再看跑批过程） -->
+    <div class="dsc-card" id="boardCard">
+      <div class="dsc-card__header">
+        <span class="dsc-card__title">${monthLabel} 排名看板（${isNewStd ? '新标准' : '旧标准'}）</span>
+        <span class="dsc-text-tertiary dsc-font-sm">${boardTip}</span>
+      </div>
+      <div class="dsc-card__body">
+        ${tabsHtml}
+        <div class="dsc-table-wrapper">${tableHtml}</div>
+        <div class="dsc-pagination">
+          <span>共 ${curRows.length} 家二级单位</span>
+          
+        </div>
+      </div>
     </div>
 
     <!-- V3.0 跑批三阶段级联 -->
@@ -1820,8 +1944,8 @@ function renderScoreLedgerPage() {
                   <td><span class="dsc-tag dsc-tag--success">完成</span></td>
                   <td><span class="dsc-tag dsc-tag--success">已生成</span></td>
                   <td class="dsc-table__actions">
-                    <button class="dsc-btn dsc-btn--text dsc-btn--sm">查看明细</button>
-                    <button class="dsc-btn dsc-btn--text dsc-btn--sm">重新计算</button>
+                    <button class="dsc-btn dsc-btn--text dsc-btn--sm" onclick="viewBatchDetail('${b.batchNo}')">查看明细</button>
+                    <button class="dsc-btn dsc-btn--text dsc-btn--sm" onclick="rerunBatch(this, '${b.batchNo}')">重新计算</button>
                   </td>
                 </tr>`;
               }).join('')}
@@ -1831,21 +1955,6 @@ function renderScoreLedgerPage() {
       </div>
     </div>
 
-    <!-- 排名看板 -->
-    <div class="dsc-card">
-      <div class="dsc-card__header">
-        <span class="dsc-card__title">${monthLabel} 排名看板（${isNewStd ? '新标准' : '旧标准'}）</span>
-        <span class="dsc-text-tertiary dsc-font-sm">${boardTip}</span>
-      </div>
-      <div class="dsc-card__body">
-        ${tabsHtml}
-        <div class="dsc-table-wrapper">${tableHtml}</div>
-        <div class="dsc-pagination">
-          <span>共 ${curRows.length} 家二级单位</span>
-          
-        </div>
-      </div>
-    </div>
   `;
 }
 
@@ -1872,7 +1981,60 @@ function rerenderScoreLedger() {
 }
 
 function runMonthlyBatch(btn) {
-  setBtnLoading(btn, '跑批中…', 2600, function () { showToast('月度跑批任务已提交：按业态标准表与单位差异化阈值自动算分，预计 3-5 分钟完成', 'info'); });
+  const isNew = (AppState.scoreMonth || '202607') === '202607';
+  const monthLabel = isNew ? '2026年7月' : '2026年6月';
+  const scopeText = isNew ? '21 家二级单位、25 项指标（含三步级联与穿透切片）' : '18 家二级单位、13 项指标（旧标准单阶段）';
+  openModal('执行月度跑批', `
+    <div class="dsc-alert dsc-alert--warning">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="dsc-icon-inline"><path d="M8 1.5L15 14H1z"/><path d="M8 6v3.2M8 11.6v.2" stroke-linecap="round"/></svg>即将对 <strong>${monthLabel}</strong> 执行月度跑批：按三业态标准表与单位差异化阈值自动算分，覆盖 ${scopeText}。跑批将覆盖本月既有草稿结果。
+    </div>
+    <table class="dsc-table">
+      <tbody>
+        <tr><td style="width:140px;" class="dsc-cell-label">考核月份</td><td><strong>${monthLabel}</strong></td></tr>
+        <tr><td class="dsc-cell-label">数据来源</td><td>平台抽取台账最终生效值 + 检查登记台已生效扣分 + 报送核验结果</td></tr>
+        <tr><td class="dsc-cell-label">算分口径</td><td>${isNew ? '新标准（主业66/海外70/投资60，动态满分按月计算）' : '旧标准（主业满分68分/月）'}</td></tr>
+      </tbody>
+    </table>
+  `, true);
+  document.getElementById('modalConfirm').onclick = function () {
+    closeModal();
+    GATE_FLOW.current = 'BATCH_RUNNING';
+    BATCH_STAGES.forEach(s => { s.status = 'running'; });
+    rerenderScoreLedger();
+    showToast('月度跑批已启动：局考二级算分 → 穿透切片自动生成 → 二级自主考评跑批', 'info');
+    setTimeout(function () {
+      BATCH_STAGES.forEach(s => { s.status = 'done'; });
+      if (GATE_FLOW.current === 'BATCH_RUNNING') GATE_FLOW.current = 'GATE1_PENDING';
+      rerenderScoreLedger();
+      showToast(`跑批完成：${monthLabel} 得分已生成（${isNew ? '21 家单位 / 25 项指标' : '18 家单位 / 13 项指标'}），请查看排名看板`, 'success');
+      const board = document.getElementById('boardCard');
+      if (board) board.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 1800);
+  };
+}
+
+// 跑批日志：查看明细（只读）/ 重新计算（加载态反馈）
+function viewBatchDetail(batchNo) {
+  const b = BATCH_RUN_LOGS.find(x => x.batchNo === batchNo);
+  if (!b) { showToast('未找到该跑批记录', 'warning'); return; }
+  openModal(`跑批明细 - ${b.batchNo}`, `
+    <table class="dsc-table dsc-mb-lg">
+      <tbody>
+        <tr><td style="width:150px;" class="dsc-cell-label">考核月份</td><td><strong>${b.month}</strong></td></tr>
+        <tr><td class="dsc-cell-label">开始 / 完成</td><td>${b.runTime} — ${b.finishTime}</td></tr>
+        <tr><td class="dsc-cell-label">涉及单位 / 指标</td><td>${b.units} 家单位 · ${b.indicators} 项指标</td></tr>
+        <tr><td class="dsc-cell-label">级联阶段</td><td>${b.month === '2026年7月' ? '局考二级算分 → 局考穿透切片 → 二级自主考评跑批' : '单阶段（旧标准，无三级穿透）'}</td></tr>
+        <tr><td class="dsc-cell-label">得分生成</td><td><span class="dsc-tag dsc-tag--success">已生成</span></td></tr>
+      </tbody>
+    </table>
+    <div class="dsc-alert dsc-alert--info" style="margin-bottom:0;">ⓘ 明细账单与排名看板请通过「导出当月台账」获取完整文件；单笔扣分追溯可查看单位明细弹窗的“下属三级归属分布”。</div>
+  `, false);
+}
+
+function rerunBatch(btn, batchNo) {
+  setBtnLoading(btn, '重算中…', 2000, function () {
+    showToast(`${batchNo} 已重新计算完成，得分与排名已按最新生效值刷新`, 'success');
+  });
 }
 
 function exportLedger(btn) {
@@ -1923,19 +2085,10 @@ function viewUnitDetail(unitName, biz, month) {
         <span class="dsc-tag dsc-tag--info">${b}内排名 ${unit.rank}</span>
       </span>
     </div>
-    <div class="dsc-stat-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
-      <div class="dsc-stat-card" style="padding:16px;">
-        <div class="dsc-stat-card__label">总得分</div>
-        <div class="dsc-stat-card__value" style="font-size:24px;">${unit.totalScore}<span style="font-size:14px;color:var(--color-text-tertiary);"> / ${unit.totalFullScore}</span></div>
-      </div>
-      <div class="dsc-stat-card" style="padding:16px;">
-        <div class="dsc-stat-card__label">得分率</div>
-        <div class="dsc-stat-card__value" style="font-size:24px;">${unit.scoreRate}</div>
-      </div>
-      <div class="dsc-stat-card" style="padding:16px;">
-        <div class="dsc-stat-card__label">当月满分基数</div>
-        <div class="dsc-stat-card__value" style="font-size:24px;">${unit.totalFullScore}</div>
-      </div>
+    <div class="dsc-flex dsc-gap-lg dsc-flex--center dsc-mb-lg" style="flex-wrap:wrap;padding:10px 14px;background:var(--color-bg-table-header);border-radius:var(--radius-md);">
+      <span class="dsc-font-sm dsc-text-secondary">总得分 <strong class="dsc-score__value" style="font-size:20px;">${unit.totalScore}</strong><span class="dsc-text-tertiary"> / ${unit.totalFullScore}</span></span>
+      <span class="dsc-font-sm dsc-text-secondary">得分率 <strong style="color:${scoreColorOf(unit.scoreRate)}">${unit.scoreRate}</strong></span>
+      <span class="dsc-font-sm dsc-text-secondary">当月满分 <strong>${unit.totalFullScore}</strong></span>
     </div>
     ${isNew && bizFull !== undefined ? `<div class="dsc-alert dsc-alert--info"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" class="dsc-icon-inline"><circle cx="8" cy="8" r="6"/><path d="M8 7v4M8 5v.2"/></svg>2026年7月动态满分按新标准计算（${b} ${bizFull}分），每笔扣分可追溯至实际指标数据、扣分规则与扣分原因。</div>` : ''}
     <div class="dsc-tabs dsc-mb-md" id="unitDetailTabs">
@@ -2325,7 +2478,7 @@ function openVersionPublishModal() {
   document.getElementById('modalConfirm').onclick = function () {
     if (canApprove) {
       const remark = (document.getElementById('verPublishRemark') || {}).value || '';
-      if (remark.trim().length < 5) { showToast('「二级分管领导签批意见」为必填项，不少于 5 个字符', 'warning'); return; }
+      if (remark.trim().length < 5) { flagFieldError(document.getElementById('verPublishRemark')); showToast('「二级分管领导签批意见」为必填项，不少于 5 个字符', 'warning'); return; }
       AUTONOMOUS_VERSION.publishStatus = '已发布';
       closeModal();
       showToast('配置版本已签批发布：V3.1-自主定制版生效，三级差异化阈值同步下发生效', 'success');
@@ -2362,7 +2515,7 @@ function openLine2RejectModal(reportId) {
   `, true);
   document.getElementById('modalConfirm').onclick = function () {
     const comment = (document.getElementById('rjComment') || {}).value || '';
-    if (comment.trim().length < 10) { showToast('「具体驳回批注」为必填项，且不少于 10 个字', 'warning'); return; }
+    if (comment.trim().length < 10) { flagFieldError(document.getElementById('rjComment')); showToast('「具体驳回批注」为必填项，且不少于 10 个字', 'warning'); return; }
     closeModal();
     showToast(`已驳回 ${r.report_id || r.id}，并通知 ${r.tertiary} 于截止时限前补正重报`, 'success');
   };
@@ -2542,7 +2695,7 @@ function renderTertiaryPortalPage() {
             </tbody>
           </table>
         </div>
-        <div class="dsc-pagination"><span>试公示期内可对扣分项发起申诉（倒计时剩余 1 天 14 小时）</span></div>
+        <div class="dsc-pagination"><span>试公示期内可对扣分项发起申诉（倒计时剩余 ${TRIAL_COUNTDOWN.text}）</span></div>
       </div>
     </div>
     ` : ''}
@@ -2599,8 +2752,8 @@ function openL3ReportSubmit(taskId) {
   document.getElementById('modalConfirm').onclick = function () {
     const metric = (document.getElementById('l3Metric') || {}).value || '';
     const progress = (document.getElementById('l3Progress') || {}).value || '';
-    if (!metric.trim()) { showToast('「指标完成数值」为必填项', 'warning'); return; }
-    if (progress.trim().length < 20) { showToast('「进展情况详细陈述」为必填项，且不少于 20 字', 'warning'); return; }
+    if (!metric.trim()) { flagFieldError(document.getElementById('l3Metric')); showToast('「指标完成数值」为必填项', 'warning'); return; }
+    if (progress.trim().length < 20) { flagFieldError(document.getElementById('l3Progress')); showToast('「进展情况详细陈述」为必填项，且不少于 20 字', 'warning'); return; }
     closeModal();
     // P1-4 提交状态回写：状态机流转，避免"提示成功但列表仍为待填报"
     r.status = '待核验';
@@ -2665,14 +2818,14 @@ function renderAppealApprovalPage() {
     <div class="dsc-page-header">
       <h1 class="dsc-page-header__title">申诉审批与纠正</h1>
       <div class="dsc-page-header__actions">
-        <button class="dsc-btn dsc-btn--default"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="dsc-icon-inline"><path d="M2.5 13V4M7 13V2.5M11.5 13V6M2 13h12"/></svg>试公示看板</button>
+        <button class="dsc-btn dsc-btn--default" onclick="openTrialBoardModal()"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="dsc-icon-inline"><path d="M2.5 13V4M7 13V2.5M11.5 13V6M2 13h12"/></svg>试公示看板</button>
         <button class="dsc-btn dsc-btn--primary" onclick="openSpecialApprovalModal()">+ 纠正调整</button>
       </div>
     </div>
 
     <!-- 试公示倒计时横幅（V3.0） -->
     <div class="dsc-alert dsc-alert--warning">
-      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="dsc-icon-inline"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg>当前处于 <strong>2026年7月</strong> 考核结果试公示期（剩余 <strong>1 天 14 小时</strong>），逾期申诉通道关闭。
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" class="dsc-icon-inline"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg>当前处于 <strong>2026年7月</strong> 考核结果试公示期（剩余 <strong>${TRIAL_COUNTDOWN.text}</strong>），逾期申诉通道关闭。
     </div>
 
     <!-- V3.0 申诉分级 Tab -->
@@ -2683,8 +2836,8 @@ function renderAppealApprovalPage() {
 
     <div class="dsc-alert dsc-alert--info">
       <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" class="dsc-icon-inline"><circle cx="8" cy="8" r="6"/><path d="M8 7v4M8 5v.2"/></svg>${isLine1
-        ? '<strong>局考穿透追溯</strong>：二级单位 → 局总部，试公示期7月28日—7月30日（共3个工作日），8月1日起公示正式结果；试公示期间二级单位仅可见本单位结果。1—6月旧标准批次仅作历史查询。'
-        : '<strong>二级自主考评</strong>：三级单位 → 二级单位（二级考核专员初审 / 二级领导裁定）。局端具备<strong>穿透监管审计权限</strong>，仅只读查看各二级内部的申诉处理流向与进度，不介入裁定。'}
+        ? '<strong>局考复核申诉</strong>：二级单位 → 局总部，试公示期7月28日—7月30日（共3个工作日），8月1日起公示正式结果；试公示期间二级单位仅可见本单位结果。1—6月旧标准批次仅作历史查询。'
+        : '<strong>二级自主考评申诉</strong>：三级单位 → 二级单位（二级考核专员初审 / 二级领导裁定）。局端具备<strong>穿透监管审计权限</strong>，仅只读查看各二级内部的申诉处理流向与进度，不介入裁定。'}
     </div>
 
     <!-- 申诉列表 -->
@@ -2694,7 +2847,7 @@ function renderAppealApprovalPage() {
         <div class="dsc-flex dsc-gap-sm">
           <select class="dsc-select" id="appealMonthFilter" style="width:130px;"><option value="">全部月份</option><option>2026年7月</option><option>2026年6月</option></select>
           <select class="dsc-select" id="appealStatusFilter" style="width:150px;"><option value="">全部状态</option><option value="初审中">考核专员初审中</option><option value="复核中">部门领导复核中</option><option value="已裁定">已裁定</option></select>
-          <button class="dsc-btn dsc-btn--default dsc-btn--sm">刷新</button>
+          <button class="dsc-btn dsc-btn--default dsc-btn--sm" onclick="refreshAppealList(this)">刷新</button>
         </div>
       </div>
       <div class="dsc-card__body--no-padding">
@@ -2790,6 +2943,34 @@ function initAppealApprovalPage() {
   });
 }
 
+// 试公示看板（原为空按钮：集中展示公示期、倒计时、可见范围与申诉进度）
+function openTrialBoardModal() {
+  const a = APPEAL_RECORDS;
+  const c1 = a.filter(x => x.status.includes('初审')).length;
+  const c2 = a.filter(x => x.status.includes('复核')).length;
+  const c3 = a.filter(x => x.status.includes('已裁定')).length;
+  openModal('试公示看板', `
+    <table class="dsc-table dsc-mb-lg">
+      <tbody>
+        <tr><td style="width:150px;" class="dsc-cell-label">公示批次</td><td><strong>2026年7月</strong> 月度考核结果（新标准首个考核月）</td></tr>
+        <tr><td class="dsc-cell-label">试公示期</td><td>${TRIAL_COUNTDOWN.start} — ${TRIAL_COUNTDOWN.end}（3 个工作日）</td></tr>
+        <tr><td class="dsc-cell-label">剩余时间</td><td><span class="dsc-text-danger"><strong>${TRIAL_COUNTDOWN.text}</strong></span>，截至 ${TRIAL_COUNTDOWN.deadline}，逾期申诉通道关闭</td></tr>
+        <tr><td class="dsc-cell-label">可见范围</td><td>数据权限隔离：各二级单位仅可见本公司试公示结果</td></tr>
+        <tr><td class="dsc-cell-label">申诉进度</td><td>共 <strong>${a.length}</strong> 条：初审中 ${c1} · 复核中 ${c2} · 已裁定 ${c3}</td></tr>
+      </tbody>
+    </table>
+    <div class="dsc-alert dsc-alert--info" style="margin-bottom:0;">ⓘ 试公示结束后进入闸口二：局领导签发正式月度通报并推送供应链画像系统。</div>
+  `, false);
+}
+
+function refreshAppealList(btn) {
+  setBtnLoading(btn, '刷新中…', 900, function () {
+    const line = AppState.appealLine || '局考复核申诉';
+    const n = line === '局考复核申诉' ? APPEAL_RECORDS.length : LINE2_APPEALS.length;
+    showToast(`申诉列表已刷新（${line} 共 ${n} 条）`, 'info');
+  });
+}
+
 function applyAppealFilters() {
   const m = (document.getElementById('appealMonthFilter') || {}).value || '';
   const s = (document.getElementById('appealStatusFilter') || {}).value || '';
@@ -2881,12 +3062,12 @@ function viewAppealDetail(appealId) {
   openModal(`申诉处理 - ${appealId}`, html, true);
   document.getElementById('modalConfirm').onclick = function () {
     const opinion = (document.getElementById('apSpecialistOpinion') || {}).value || '';
-    if (opinion.trim().length < 10) { showToast('「专员初审意见」为必填项，且不少于 10 个字符', 'warning'); return; }
+    if (opinion.trim().length < 10) { flagFieldError(document.getElementById('apSpecialistOpinion')); showToast('「专员初审意见」为必填项，且不少于 10 个字符', 'warning'); return; }
     if (canFinal) {
       const verdict = (document.getElementById('apLeaderVerdict') || {}).value || '';
       const finalScore = (document.getElementById('apFinalScore') || {}).value || '';
-      if (!verdict) { showToast('请选择领导终审结论', 'warning'); return; }
-      if (verdict === 'AGREE_OVERRIDE' && !finalScore) { showToast('终审「同意纠正」时必须填写最终纠正分值', 'warning'); return; }
+      if (!verdict) { flagFieldError(document.getElementById('apLeaderVerdict')); showToast('请选择领导终审结论', 'warning'); return; }
+      if (verdict === 'AGREE_OVERRIDE' && !finalScore) { flagFieldError(document.getElementById('apFinalScore')); showToast('终审「同意纠正」时必须填写最终纠正分值', 'warning'); return; }
       closeModal();
       showToast(verdict === 'AGREE_OVERRIDE'
         ? `终审已签批：同意纠正并录入最终分值 ${finalScore} 分，系统已触发特批重算与排名刷新`
@@ -3064,6 +3245,20 @@ function setBtnLoading(btn, label, ms, done) {
     btn.innerHTML = original;
     if (done) done();
   }, ms || 2200);
+}
+
+// 字段级校验：给控件加错误态并聚焦，用户首次输入后自动清除（替代纯 toast 提示）
+function flagFieldError(el) {
+  if (!el) return;
+  el.classList.add('dsc-input--error');
+  if (el.focus) { try { el.focus(); } catch (e) { /* no-op */ } }
+  const clear = function () {
+    el.classList.remove('dsc-input--error');
+    el.removeEventListener('input', clear);
+    el.removeEventListener('change', clear);
+  };
+  el.addEventListener('input', clear);
+  el.addEventListener('change', clear);
 }
 
 function showToast(message, type) {
@@ -3274,6 +3469,19 @@ window.resetIndicatorFilters = resetIndicatorFilters;
 window.runMonthlyBatch = runMonthlyBatch;
 window.exportLedger = exportLedger;
 window.openThresholdModal = openThresholdModal;
+// —— 反馈闭环补齐（UX 评审修复） ——
+window.exportConfig = exportConfig;
+window.saveTemplateConfig = saveTemplateConfig;
+window.resetTemplateConfig = resetTemplateConfig;
+window.deleteThreshold = deleteThreshold;
+window.remindAllOverdue = remindAllOverdue;
+window.batchHandleExceptions = batchHandleExceptions;
+window.handleException = handleException;
+window.viewBatchDetail = viewBatchDetail;
+window.rerunBatch = rerunBatch;
+window.confirmSuspend = confirmSuspend;
+window.openTrialBoardModal = openTrialBoardModal;
+window.refreshAppealList = refreshAppealList;
 // —— V3.0 双线穿透 ——
 window.applyRole = applyRole;
 window.switchCollectSection = switchCollectSection;
@@ -3337,9 +3545,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // P0-2 表格固定列/粘性表头增强（覆盖所有动态重渲染）
   initTableEnhancer();
-  
-  // 初始加载页面
-  navigateTo('rules-config');
-  
+
+  // 初始加载页面：优先恢复地址栏 hash（刷新/分享可直达），否则落到规则配置
+  const VALID_PAGES = ['rules-config', 'data-collection', 'score-ledger', 'appeal-approval', 'tertiary-workspace', 'tertiary-portal'];
+  const hashPage = (location.hash || '').replace(/^#\/?/, '');
+  navigateTo(VALID_PAGES.indexOf(hashPage) >= 0 ? hashPage : 'rules-config');
+
   console.log('DSC 二级单位考核指标评分系统 v2.1 已启动（2026年7月修订版新标准 · 三业态排名与动态满分）');
 });

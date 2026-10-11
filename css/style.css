@@ -1365,6 +1365,24 @@ a:hover { color: var(--color-primary-hover); }
   color: var(--color-text-tertiary);
 }
 
+/* 角色权限收敛时的侧栏空态提示 */
+.dsc-sidebar__scope-hint {
+  margin: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+  color: var(--color-text-tertiary);
+  background: #FAFAFA;
+}
+
+/* 字段级校验错误态（textarea / select 与 input 同规范） */
+.dsc-textarea.dsc-input--error,
+.dsc-select.dsc-input--error {
+  border-color: var(--color-danger);
+}
+
 /* 三级归属切片树状层级 */
 .dsc-slice-child td:first-child {
   border-left: 2px solid var(--color-primary-light);
